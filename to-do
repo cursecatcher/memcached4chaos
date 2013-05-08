@@ -1,6 +1,12 @@
 TO DO LIST:
 
+Segno con "/// STATS" le parti relative all'acquisizione di statistiche;
+le parti sono al momento commentate
+
+Segno con "/// TRACE" le parti relative all'acquisizione di dati per Dtrace;
+le parti sono al momento commentate
+
 1-1. script configure per verificare se il sistema è in little o big endian
 1-2. modificare hash.* in modo da prevedere il caso big endian
 
-2.
+
