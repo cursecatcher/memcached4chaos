@@ -9,6 +9,7 @@ le parti sono al momento commentate
 Segno con "/// SETTINGS" le parti relative a strutture di tipo settings;
 le parti hanno al momento valori di default
 
+
 1-1. script configure per verificare se il sistema è in little o big endian
 1-2. modificare hash.* in modo da prevedere il caso big endian
 
