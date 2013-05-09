@@ -127,4 +127,5 @@ and these came close:
 class hash {
     public:
         static uint32_t hash_function(const void *key, size_t length);
+        static uint32_t hash_function(const void* key, size_t length, const uint32_t initval);
 };
