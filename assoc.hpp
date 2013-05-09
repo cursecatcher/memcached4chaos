@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <iostream>
 
+#include "hash.hpp"
 #include "defines.h"
 
 extern pthread_mutex_t cache_lock;

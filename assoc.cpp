@@ -187,6 +187,65 @@ void assoc_array::stop_assoc_maintenance_thread(void) {
 
 
 void* assoc_array::assoc_maintenance_thread(void *arg) {
+    assoc_array *array = (assoc_array *) arg;
+
+    while (array->do_run_maintenance_thread) {
+        int ii = 0;
+
+        /* Lock the cache, and bulk move multiple buckets to the new
+         * hash table. */
+        item_lock_global();
+        mutex_lock(&cache_lock);
+
+        for (ii = 0; ii < array->hash_bulk_move && array->expanding; ++ii) {
+            item *it, *next;
+            int bucket;
+
+            for (it = array->old_hashtable[array->expand_bucket]; it != NULL; it = next) {
+                next = it->h_next;
+
+                bucket = (int) hash::hash_function(ITEM_key(it), it->nkey) & hashmask(array->hashpower);
+                it->h_next = array->primary_hashtable[bucket];
+                array->primary_hashtable[bucket] = it;
+            }
+
+            array->old_hashtable[array->expand_bucket] = NULL;
+            array->expand_bucket++;
+
+            if (array->expand_bucket == hashsize(array->hashpower - 1)) {
+                array->expanding = false;
+                free(array->old_hashtable);
+/// STATS
+/*              STATS_LOCK();
+                stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
+                stats.hash_is_expanding = 0;
+                STATS_UNLOCK(); */
+/// SETTINGS
+/*              if (settings.verbose > 1)
+                    std::cerr << "Hash table expansion done." << endl; */
+            }
+        }
+
+        mutex_unlock(&cache_lock);
+        item_unlock_global();
+
+        if (!array->expanding) {
+            /* finished expanding. tell all threads to use fine-grained locks */
+            switch_item_lock_type(ITEM_LOCK_GRANULAR);
+            slabs_rebalancer_resume();
+            /* We are done expanding.. just wait for next invocation */
+            mutex_lock(&cache_lock);
+            array->started_expanding = false;
+            pthread_cond_wait(&array->maintenance_cond, &cache_lock);
+            /* Before doing anything, tell threads to use a global lock */
+            mutex_unlock(&cache_lock);
+            slabs_rebalancer_pause();
+            switch_item_lock_type(ITEM_LOCK_GLOBAL);
+            mutex_lock(&cache_lock);
+            array->assoc_expand();
+            mutex_unlock(&cache_lock);
+        }
+    }
     return NULL;
 }
 
