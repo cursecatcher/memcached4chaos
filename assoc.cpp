@@ -2,24 +2,20 @@
 
 pthread_mutex_t cache_lock;
 
-assoc_array::assoc_array() {
+assoc_array::assoc_array(const int hashpower_init) {
     pthread_cond_init(&this->maintenance_cond, NULL);
 
     this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
     this->do_run_maintenance_thread = 1;
 
-    this->hashpower = HASHPOWER_DEFAULT;
-    this->primary_hashtable = NULL;
+//    this->hashpower = HASHPOWER_DEFAULT;
+//    this->primary_hashtable = NULL;
     this->old_hashtable = NULL;
     this->hash_items = 0;
     this->expanding = this->started_expanding = false;
     this->expand_bucket = 0;
-}
 
-
-void assoc_array::assoc_init(const int hashpower_init) {
-    if (hashpower_init)
-        this->hashpower = hashpower_init;
+    this->hashpower = hashpower_init ? hashpower_init : HASHPOWER_DEFAULT;
 
     this->primary_hashtable = (item **) calloc(hashsize(this->hashpower), sizeof(void *));
 
@@ -35,6 +31,24 @@ void assoc_array::assoc_init(const int hashpower_init) {
     STATS_UNLOCK();
 */
 }
+
+/*
+void assoc_array::assoc_init(const int hashpower_init) {
+    if (hashpower_init)
+        this->hashpower = hashpower_init;
+
+    this->primary_hashtable = (item **) calloc(hashsize(this->hashpower), sizeof(void *));
+
+    if (! this->primary_hashtable) {
+        std::cerr << "Failed to init hashtable." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+/// STATS
+//    STATS_LOCK();
+//    stats.hash_power_level = hashpower;
+//    stats.hash_bytes = hashsize(hashpower) * sizeof(void *);
+//    STATS_UNLOCK();
+} */
 
 item* assoc_array::assoc_find(const char *key, const size_t nkey, const uint32_t hv) {
     item *it, *ret = NULL;
@@ -246,6 +260,7 @@ void* assoc_array::assoc_maintenance_thread(void *arg) {
             mutex_unlock(&cache_lock);
         }
     }
+
     return NULL;
 }
 

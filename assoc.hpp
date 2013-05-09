@@ -8,6 +8,8 @@
 #include "hash.hpp"
 #include "defines.h"
 
+using namespace hash;
+
 extern pthread_mutex_t cache_lock;
 
 class assoc_array {
@@ -35,9 +37,9 @@ class assoc_array {
         unsigned int expand_bucket;
 
     public:
-        assoc_array();
+        assoc_array(const int hashpower_init);
 
-        void assoc_init(const int hashpower_init);
+//        void assoc_init(const int hashpower_init);
         item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
         int assoc_insert(item *it, const uint32_t hv);
         void assoc_delete(const char *key, const size_t nkey, const uint32_t hv);
