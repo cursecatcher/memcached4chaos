@@ -64,3 +64,15 @@ typedef struct _stritem {
     /* then " flags length\r\n" (no terminating null) */
     /* then data with terminating \r\n (no terminating null; it's binary!) */
 } item;
+
+#define item_lock_global() (0)
+#define item_unlock_global() (0)
+#define mutex_lock(x) (0)
+#define mutex_unlock(x) (0)
+#define switch_item_lock_type(t) (0)
+#define ITEM_LOCK_GLOBAL 0
+#define ITEM_LOCK_GRANULAR 0
+#define slabs_rebalancer_resume() (0)
+#define slabs_rebalancer_pause() (0)
+
+
