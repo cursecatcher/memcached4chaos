@@ -1,4 +1,3 @@
-/* *alloc */
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -34,11 +33,14 @@ typedef struct _stritem {
     /* then data with terminating \r\n (no terminating null; it's binary!) */
 } item;
 
-pthread_mutex_t cache_lock;
-
+extern pthread_mutex_t cache_lock;
 
 class assoc_array {
     private:
+        int hash_bulk_move;
+        volatile int do_run_maintenance_thread;
+
+        pthread_t maintenance_tid;
         pthread_cond_t maintenance_cond;
 /* how many powers of 2's worth of buckets we use */
         unsigned int hashpower;
@@ -60,19 +62,18 @@ class assoc_array {
     public:
         assoc_array();
 
-        void *assoc_maintenance_thread(void *arg);
+        void assoc_init(const int hashpower_init);
+        item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
+        int assoc_insert(item *it, const uint32_t hv);
+        void assoc_delete(const char *key, const size_t nkey, const uint32_t hv);
 
         item** _hashitem_before (const char *key, const size_t nkey, const uint32_t hv);
         void assoc_expand(void);
         void assoc_start_expand(void);
 
-        void assoc_init(const int hashpower_init);
-        item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
-        int assoc_insert(item *it, const uint32_t hv);
-        void assoc_delete(const char *key, const size_t nkey, const uint32_t hv);
 //      void do_assoc_move_next_bucket(void);
         int start_assoc_maintenance_thread(void);
         void stop_assoc_maintenance_thread(void);
 
-
+         void* assoc_maintenance_thread(void *arg);
 };

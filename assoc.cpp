@@ -1,8 +1,13 @@
 #include "assoc.hpp"
 
+pthread_mutex_t cache_lock;
 
 assoc_array::assoc_array() {
     pthread_cond_init(&this->maintenance_cond, NULL);
+
+    this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
+    this->do_run_maintenance_thread = 1;
+
     this->hashpower = HASHPOWER_DEFAULT;
     this->primary_hashtable = NULL;
     this->old_hashtable = NULL;
@@ -11,57 +16,6 @@ assoc_array::assoc_array() {
     this->expand_bucket = 0;
 }
 
-/* thread */
-void* assoc_array::assoc_maintenance_thread(void *arg) {
-    return NULL;
-}
-
-/* ausiliarie */
-item**  assoc_array::_hashitem_before (const char *key, const size_t nkey, const uint32_t hv) {
-    item **pos;
-    unsigned int oldbucket;
-
-    if (expanding && (oldbucket = (hv & hashmask(hashpower - 1))) >= expand_bucket)
-        pos = &old_hashtable[oldbucket];
-    else
-        pos = &primary_hashtable[hv & hashmask(hashpower)];
-
-    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, ITEM_key(*pos), nkey)))
-        pos = &(*pos)->h_next;
-
-    return pos;
-}
-
-void  assoc_array::assoc_expand(void) {
-    this->old_hashtable = this->primary_hashtable;
-    this->primary_hashtable = (item **) calloc(hashsize(this->hashpower + 1), sizeof(void *));
-
-    if (this->primary_hashtable) {
-/// SETTINGS
-/*      if (settings.verbose > 1)
-            std::cerr << "Hash table expansion starting" << std::endl; */
-        this->hashpower++;
-        this->expanding = true;
-        this->expand_bucket = 0;
-/// STATS
-/*      STATS_LOCK();
-        stats.hash_power_level = hashpower;
-        stats.hash_bytes += hashsize(hashpower) * sizeof(void *);
-        stats.hash_is_expanding = 1;
-        STATS_UNLOCK();
-*/
-    } else {
-        this->primary_hashtable = this->old_hashtable;
-        /* Bad news, but we can keep running. */
-    }
-}
-
-void assoc_array::assoc_start_expand(void) {
-    if (this->started_expanding)
-        return;
-    this->started_expanding = true;
-    pthread_cond_signal(&this->maintenance_cond);
-}
 
 void assoc_array::assoc_init(const int hashpower_init) {
     if (hashpower_init)
@@ -148,18 +102,89 @@ void assoc_array::assoc_delete(const char *key, const size_t nkey, const uint32_
     assert(*before != 0);
 }
 
-//void assoc_array::do_assoc_move_next_bucket(void) {;}
+item** assoc_array::_hashitem_before (const char *key, const size_t nkey, const uint32_t hv) {
+    item **pos;
+    unsigned int oldbucket;
 
+    if (this->expanding && (oldbucket = (hv & hashmask(this->hashpower - 1))) >= this->expand_bucket) {
+        pos = &this->old_hashtable[oldbucket];
+    } else {
+        pos = &this->primary_hashtable[hv & hashmask(this->hashpower)];
+    }
+
+    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, ITEM_key(*pos), nkey))) {
+        pos = &(*pos)->h_next;
+    }
+
+    return pos;
+}
+
+void assoc_array::assoc_expand(void) {
+    this->old_hashtable = this->primary_hashtable;
+
+    this->primary_hashtable = (item **) calloc(hashsize(this->hashpower + 1), sizeof(void *));
+    if (this->primary_hashtable) {
+/// SETTINGS
+/*      if (settings.verbose > 1)
+            fprintf(stderr, "Hash table expansion starting\n"); */
+        this->hashpower++;
+        this->expanding = true;
+        this->expand_bucket = 0;
+/// STATS
+/*      STATS_LOCK();
+        stats.hash_power_level = hashpower;
+        stats.hash_bytes += hashsize(hashpower) * sizeof(void *);
+        stats.hash_is_expanding = 1;
+        STATS_UNLOCK(); */
+    } else {
+        this->primary_hashtable = this->old_hashtable;
+        /* Bad news, but we can keep running. */
+    }
+}
+
+void assoc_array::assoc_start_expand(void) {
+    if (this->started_expanding)
+        return;
+    this->started_expanding = true;
+    pthread_cond_signal(&this->maintenance_cond);
+}
+
+
+//      void do_assoc_move_next_bucket(void);
 int assoc_array::start_assoc_maintenance_thread(void) {
+    int ret;
+    char *env = getenv("MEMCACHED_HASH_BULK_MOVE");
+
+    if (env != NULL) {
+        this->hash_bulk_move = atoi(env);
+        if (this->hash_bulk_move == 0) {
+            this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
+        }
+    }
+    if ((ret = pthread_create(&this->maintenance_tid, NULL, NULL, NULL)) != 0) {
+        std::cerr << "Can't create thread: " << strerror(ret) << std::endl;;
+        return -1;
+    }
     return 0;
 }
 
 void assoc_array::stop_assoc_maintenance_thread(void) {
-    mutex_lock(&cache_lock);
-    do_run_maintenance_thread = 0;
-    pthread_cond_signal(&maintenance_cond);
-    mutex_unlock(&cache_lock);
+/// FIX
+//    mutex_lock(&cache_lock);
+    while (pthread_mutex_trylock(&cache_lock))
+        ;
+
+    this->do_run_maintenance_thread = 0;
+    pthread_cond_signal(&this->maintenance_cond);
+/// FIX
+    pthread_mutex_unlock(&cache_lock);
 
     /* Wait for the maintenance thread to stop */
-    pthread_join(maintenance_tid, NULL);
+    pthread_join(this->maintenance_tid, NULL);
 }
+
+
+void* assoc_array::assoc_maintenance_thread(void *arg) {
+    return NULL;
+}
+
