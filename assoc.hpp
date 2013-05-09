@@ -7,32 +7,6 @@
 
 #include "defines.h"
 
-typedef unsigned int rel_time_t;
-
-typedef struct _stritem {
-    struct _stritem *next;
-    struct _stritem *prev;
-    struct _stritem *h_next;    /* hash chain next */
-    rel_time_t      time;       /* least recent access */
-    rel_time_t      exptime;    /* expire time */
-    int             nbytes;     /* size of data */
-    unsigned short  refcount;
-    uint8_t         nsuffix;    /* length of flags-and-length string */
-    uint8_t         it_flags;   /* ITEM_* above */
-    uint8_t         slabs_clsid;/* which slab class we're in */
-    uint8_t         nkey;       /* key length, w/terminating null and padding */
-    /* this odd type prevents type-punning issues when we do
-     * the little shuffle to save space when not using CAS. */
-    union {
-        uint64_t cas;
-        char end;
-    } data[];
-    /* if it_flags & ITEM_CAS we have 8 bytes CAS */
-    /* then null-terminated key */
-    /* then " flags length\r\n" (no terminating null) */
-    /* then data with terminating \r\n (no terminating null; it's binary!) */
-} item;
-
 extern pthread_mutex_t cache_lock;
 
 class assoc_array {
@@ -75,5 +49,5 @@ class assoc_array {
         int start_assoc_maintenance_thread(void);
         void stop_assoc_maintenance_thread(void);
 
-         void* assoc_maintenance_thread(void *arg);
+        void* assoc_maintenance_thread(void *arg);
 };

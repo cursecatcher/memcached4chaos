@@ -126,7 +126,7 @@ void assoc_array::assoc_expand(void) {
     if (this->primary_hashtable) {
 /// SETTINGS
 /*      if (settings.verbose > 1)
-            fprintf(stderr, "Hash table expansion starting\n"); */
+            std::cerr << "Hash table expansion starting." << std::endl; */
         this->hashpower++;
         this->expanding = true;
         this->expand_bucket = 0;
@@ -161,12 +161,14 @@ int assoc_array::start_assoc_maintenance_thread(void) {
             this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
         }
     }
-    if ((ret = pthread_create(&this->maintenance_tid, NULL, NULL, NULL)) != 0) {
+    if ((ret = pthread_create(&this->maintenance_tid, NULL, (void* (*)(void*)) &assoc_array::assoc_maintenance_thread, (void*) this)) != 0) {
         std::cerr << "Can't create thread: " << strerror(ret) << std::endl;;
         return -1;
     }
     return 0;
 }
+
+
 
 void assoc_array::stop_assoc_maintenance_thread(void) {
 /// FIX
