@@ -2,7 +2,7 @@ NAME = test
 CC = g++
 LIBS = -lpthread
 
-all: test.o assoc.o
+all: test.o hash.o assoc.o
 	$(CC) -o $(NAME) $^ $(LIBS)
 
 test.o: test.cpp
@@ -10,6 +10,9 @@ test.o: test.cpp
 
 assoc.o: assoc.cpp assoc.hpp
 	$(CC) -c $^ $(LIBS)
+
+hash.o: hash.cpp hash.hpp
+	$(CC) -c $^
 
 clean: 
 	rm -rf *.o *.gch 
