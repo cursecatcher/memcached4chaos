@@ -1,5 +1,5 @@
-#include "assoc.hpp"
 #include <iostream>
+#include "assoc.hpp"
 
 using namespace std;
 
