@@ -124,8 +124,7 @@ and these came close:
   c ^= b; c -= rot(b,24); \
 }
 
-class hash {
-    public:
-        static uint32_t hash_function(const void *key, size_t length);
-        static uint32_t hash_function(const void* key, size_t length, const uint32_t initval);
-};
+namespace hash {
+    uint32_t hash_function(const void *key, size_t length);
+    uint32_t hash_function(const void* key, size_t length, const uint32_t initval);
+}
