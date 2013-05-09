@@ -49,5 +49,5 @@ class assoc_array {
         int start_assoc_maintenance_thread(void);
         void stop_assoc_maintenance_thread(void);
 
-        void* assoc_maintenance_thread(void *arg);
+        static void* assoc_maintenance_thread(void *arg);
 };
