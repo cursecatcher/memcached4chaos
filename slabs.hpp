@@ -1,5 +1,6 @@
 #include <iostream>
-
+#include <cstdlib>
+#include <cstring>
 
 #include "defines.h"
 
@@ -51,4 +52,4 @@ class slab_allocator {
     up front (if true), or allocate memory in chunks as it is needed (if false)
 */
         slab_allocator(const size_t limit, const double factor = 1.25, const bool prealloc = false);
-}
+};
