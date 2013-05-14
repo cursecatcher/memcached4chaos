@@ -21,3 +21,5 @@ le parti hanno al momento valori di default
 	
 5. in assoc.cpp: sistemare terzo parametro di pthread_create()
 6. in assoc.cpp: in stop_assoc_maintenance_thread: riscrivere mutex_lock()
+
+7. Nelle funzioni relative ai slab-thread vanno definiti i  metodi mancanti

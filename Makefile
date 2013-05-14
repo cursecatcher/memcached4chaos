@@ -11,6 +11,9 @@ test.o: test.cpp
 assoc.o: assoc.cpp assoc.hpp
 	$(CC) -c $^ $(LIBS)
 
+slabs.o: slabs.cpp slabs.hpp
+	$(CC) -c $^ $(LIBS)
+
 hash.o: hash.cpp hash.hpp
 	$(CC) -c $^
 
