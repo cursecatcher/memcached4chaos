@@ -72,7 +72,5 @@ typedef struct _stritem {
 #define switch_item_lock_type(t) (0)
 #define ITEM_LOCK_GLOBAL 0
 #define ITEM_LOCK_GRANULAR 0
-#define slabs_rebalancer_resume() (0)
-#define slabs_rebalancer_pause() (0)
 
 
