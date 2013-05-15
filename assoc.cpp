@@ -215,19 +215,22 @@ void* assoc_maintenance_thread(void *arg) {
             item *it, *next;
             int bucket;
 
-            for (it = array->old_hashtable[array->expand_bucket]; it != NULL; it = next) {
+            //array->old_hashtable[array->expand_bucket]
+            for (it = array->get_old_hashtable(array->get_expand_bucket()); it != NULL; it = next) {
                 next = it->h_next;
 
                 bucket = (int) hash::hash_function(ITEM_key(it), it->nkey) & hashmask(array->get_hashpower());
-                it->h_next = array->primary_hashtable[bucket];
-                array->primary_hashtable[bucket] = it;
+                it->h_next = array->get_primary_hashtable(bucket); //array->primary_hashtable[bucket];
+                array->set_primary_hashtable(bucket, it); //array->primary_hashtable[bucket] = it;
             }
 
-            array->old_hashtable[array->expand_bucket] = NULL;
-            array->expand_bucket++;
+            array->set_old_hashtable(array->get_expand_bucket(), NULL);
+//            array->old_hashtable[array->expand_bucket] = NULL;
+            array->set_expand_bucket(array->get_expand_bucket() + 1); //increment??
+//            array->expand_bucket++;
 
             if (array->get_expand_bucket() == hashsize(array->get_hashpower() - 1)) {
-                array->expanding = false;
+                array->set_expanding(false);
                 free(array->get_old_hashtable());
 /// STATS
 /*              STATS_LOCK();
@@ -249,8 +252,8 @@ void* assoc_maintenance_thread(void *arg) {
             slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
             mutex_lock(&cache_lock);
-            array->started_expanding = false;
-            pthread_cond_wait(&array->get_maintenance_cond(), &cache_lock);
+            array->set_started_expanding(false);
+            array->manipulate_maintenance_cond();
             /* Before doing anything, tell threads to use a global lock */
             mutex_unlock(&cache_lock);
             slabs_rebalancer_pause();
