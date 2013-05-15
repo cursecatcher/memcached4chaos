@@ -175,7 +175,7 @@ int assoc_array::start_assoc_maintenance_thread(void) {
             this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
         }
     }
-    if ((ret = pthread_create(&this->maintenance_tid, NULL, (void* (*)(void*)) &assoc_array::assoc_maintenance_thread, (void*) this)) != 0) {
+    if ((ret = pthread_create(&this->maintenance_tid, NULL, assoc_maintenance_thread, (void*) this)) != 0) {
         std::cerr << "Can't create thread: " << strerror(ret) << std::endl;;
         return -1;
     }
@@ -200,10 +200,10 @@ void assoc_array::stop_assoc_maintenance_thread(void) {
 }
 
 
-void* assoc_array::assoc_maintenance_thread(void *arg) {
+void* assoc_maintenance_thread(void *arg) {
     assoc_array *array = (assoc_array *) arg;
 
-    while (array->do_run_maintenance_thread) {
+    while (array->get_do_run_maintenance_thread()) {
         int ii = 0;
 
         /* Lock the cache, and bulk move multiple buckets to the new
@@ -211,14 +211,14 @@ void* assoc_array::assoc_maintenance_thread(void *arg) {
         item_lock_global();
         mutex_lock(&cache_lock);
 
-        for (ii = 0; ii < array->hash_bulk_move && array->expanding; ++ii) {
+        for (ii = 0; ii < array->get_hash_bulk_move() && array->get_expanding(); ++ii) {
             item *it, *next;
             int bucket;
 
             for (it = array->old_hashtable[array->expand_bucket]; it != NULL; it = next) {
                 next = it->h_next;
 
-                bucket = (int) hash::hash_function(ITEM_key(it), it->nkey) & hashmask(array->hashpower);
+                bucket = (int) hash::hash_function(ITEM_key(it), it->nkey) & hashmask(array->get_hashpower());
                 it->h_next = array->primary_hashtable[bucket];
                 array->primary_hashtable[bucket] = it;
             }
@@ -226,9 +226,9 @@ void* assoc_array::assoc_maintenance_thread(void *arg) {
             array->old_hashtable[array->expand_bucket] = NULL;
             array->expand_bucket++;
 
-            if (array->expand_bucket == hashsize(array->hashpower - 1)) {
+            if (array->get_expand_bucket() == hashsize(array->get_hashpower() - 1)) {
                 array->expanding = false;
-                free(array->old_hashtable);
+                free(array->get_old_hashtable());
 /// STATS
 /*              STATS_LOCK();
                 stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
@@ -243,14 +243,14 @@ void* assoc_array::assoc_maintenance_thread(void *arg) {
         mutex_unlock(&cache_lock);
         item_unlock_global();
 
-        if (!array->expanding) {
+        if (!array->get_expanding()) {
             /* finished expanding. tell all threads to use fine-grained locks */
             switch_item_lock_type(ITEM_LOCK_GRANULAR);
             slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
             mutex_lock(&cache_lock);
             array->started_expanding = false;
-            pthread_cond_wait(&array->maintenance_cond, &cache_lock);
+            pthread_cond_wait(&array->get_maintenance_cond(), &cache_lock);
             /* Before doing anything, tell threads to use a global lock */
             mutex_unlock(&cache_lock);
             slabs_rebalancer_pause();

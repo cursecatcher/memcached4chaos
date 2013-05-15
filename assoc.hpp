@@ -12,6 +12,8 @@ using namespace hash;
 
 extern pthread_mutex_t cache_lock;
 
+void* assoc_maintenance_thread(void *arg);
+
 class assoc_array {
     private:
         int hash_bulk_move;
@@ -39,6 +41,17 @@ class assoc_array {
     public:
         assoc_array(const int hashpower_init);
 
+        inline int get_hash_bulk_move() { return this->hash_bulk_move; }
+        inline int get_do_run_maintenance_thread() { return this->do_run_maintenance_thread; }
+        inline pthread_cond_t get_maintenance_cond() { return this->maintenance_cond; }
+        inline unsigned int get_hashpower() { return this->hashpower; }
+        inline item** get_primary_hashtable() { return this->primary_hashtable; }
+        inline item** get_old_hashtable() { return this->old_hashtable; }
+        inline unsigned int get_hash_items() { return this->hash_items; }
+        inline bool get_expanding() { return this->expanding; }
+        inline bool get_started_expanding() { return this->started_expanding; }
+        inline unsigned int get_expand_bucket() { return this->expand_bucket; }
+
 //        void assoc_init(const int hashpower_init);
         item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
         int assoc_insert(item *it, const uint32_t hv);
@@ -51,6 +64,4 @@ class assoc_array {
 //      void do_assoc_move_next_bucket(void);
         int start_assoc_maintenance_thread(void);
         void stop_assoc_maintenance_thread(void);
-
-        static void* assoc_maintenance_thread(void *arg);
 };
