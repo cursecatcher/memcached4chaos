@@ -52,6 +52,17 @@ class assoc_array {
         inline bool get_started_expanding() { return this->started_expanding; }
         inline unsigned int get_expand_bucket() { return this->expand_bucket; }
 
+        inline void set_hash_bulk_move(int nv) { this->hash_bulk_move = nv; }
+        inline void set_do_run_maintenance_thread(int nv) { this->do_run_maintenance_thread = nv; }
+        inline void set_get_maintenance_cond(pthread_cond_t nv);
+        inline void set_hashpower(unsigned int nv) { this->hashpower = nv; }
+        inline void set_primary_hashtable(...);
+        inline void set_old_hashtable(...);
+        inline void set_hash_items(unsigned int nv) {this->hash_items = nv; }
+        inline void set_expanding(bool nv) { this->expanding = nv; }
+        inline void set_started_expanding(bool nv) {this->started_expanding = nv; }
+        inline void set_expand_bucket(unsigned int nv) { this->expand_bucket = nv; }
+
 //        void assoc_init(const int hashpower_init);
         item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
         int assoc_insert(item *it, const uint32_t hv);
