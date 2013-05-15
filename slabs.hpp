@@ -11,7 +11,6 @@
 #define POWER_SMALLEST 1
 
 #define CHUNK_ALIGN_BYTES 1
-#define MACRO_RANDOM 1
 
 
 typedef struct {
