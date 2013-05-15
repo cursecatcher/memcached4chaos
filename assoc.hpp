@@ -46,7 +46,9 @@ class assoc_array {
         inline pthread_cond_t get_maintenance_cond() { return this->maintenance_cond; }
         inline unsigned int get_hashpower() { return this->hashpower; }
         inline item** get_primary_hashtable() { return this->primary_hashtable; }
+        inline item* get_primary_hashtable(int bucket) { return this->primary_hashtable[bucket]; }
         inline item** get_old_hashtable() { return this->old_hashtable; }
+        inline item* get_old_hashtable(int bucket) { return this->old_hashtable[bucket]; }
         inline unsigned int get_hash_items() { return this->hash_items; }
         inline bool get_expanding() { return this->expanding; }
         inline bool get_started_expanding() { return this->started_expanding; }
