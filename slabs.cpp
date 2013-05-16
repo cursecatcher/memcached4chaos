@@ -103,6 +103,28 @@ enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
 	return (enum reassign_result_type) 0;
 }
 
+int slab_allocator::slab_automove_decision(int *src, int *dst) {
+    return 0;
+}
+
+void slab_allocator::_slab_maintenance_thread(void) {
+   int src, dest;
+
+    while (this->do_run_slab_thread) {
+        /// SETTINGS
+        if (settings.slab_automove == 1) {
+            if (this->slab_automove_decision(&src, &dest) == 1) {
+                /* Blind to the return codes. It will retry on its own */
+                this->slabs_reassign(src, dest);
+            }
+            sleep(1);
+        } else {
+            /* Don't wake as often if we're not enabled.
+             * This is lazier than setting up a condition right now. */
+            sleep(5);
+        }
+    }
+}
 
 int slab_allocator::start_slab_maintenance_thread(void) {
     int ret;
@@ -125,19 +147,13 @@ int slab_allocator::start_slab_maintenance_thread(void) {
 
     pthread_mutex_init(&this->slabs_rebalance_lock, NULL);
 
-    if ((ret = pthread_create(
-            &this->maintenance_tid,
-            NULL,
-            slab_maintenance_thread,
-            (void*) this)) != 0) {
+    if ((ret = pthread_create(&this->maintenance_tid, NULL,
+                              slab_maintenance_thread, (void*) this)) != 0) {
         std::cerr << "Can't reate slab maintenance thread: " << strerror(ret) << std::cerr;
         return -1;
     }
-    if ((ret = pthread_create(
-            &this->rebalance_tid,
-            NULL,
-            slab_rebalance_thread,
-            (void*) this)) != 0) {
+    if ((ret = pthread_create(&this->rebalance_tid, NULL,
+                              slab_rebalance_thread, (void*) this)) != 0) {
         std::cerr << "Can't create rebalance thread: " << strerror(ret) << std::endl;
         return -1;
     }
@@ -147,7 +163,15 @@ int slab_allocator::start_slab_maintenance_thread(void) {
 
 
 void slab_allocator::stop_slab_maintenance_thread(void) {
-	;
+    mutex_lock(&cache_lock);
+    this->do_run_slab_thread = 0;
+    this->do_run_slab_rebalance_thread = 0;
+    pthread_cond_signal(&this->maintenance_cond);
+    pthread_mutex_unlock(&cache_lock);
+
+    /* Wait for the maintenance thread to stop */
+    pthread_join(this->maintenance_tid, NULL);
+    pthread_join(this->rebalance_tid, NULL);
 }
 
 
@@ -160,24 +184,19 @@ void slab_allocator::slabs_rebalancer_resume(void) {
 	pthread_mutex_unlock(&this->slabs_rebalance_lock);
 }
 
-void slab_allocator::_slab_maintenance_thread(void) {
-   int src, dest;
-
-    while (this->do_run_slab_thread) {
-        /// SETTINGS
-        if (settings.slab_automove == 1) {
-            if (this->slab_automove_decision(&src, &dest) == 1) {
-                /* Blind to the return codes. It will retry on its own */
-                this->slabs_reassign(src, dest);
-            }
-            sleep(1);
-        } else {
-            /* Don't wake as often if we're not enabled.
-             * This is lazier than setting up a condition right now. */
-            sleep(5);
-        }
-    }
+int slab_allocator::slab_rebalance_start(void) {
+    return 0;
 }
+
+int slab_allocator::slab_rebalance_move(void) {
+    return 0;
+}
+
+int slab_allocator::slab_rebalance_finish(void) {
+    return 0;
+}
+
+
 
 void slab_allocator::_slab_rebalance_thread(void) {
     int was_busy = 0;
@@ -216,7 +235,7 @@ void *slab_maintenance_thread(void* arg) {
     return NULL;
 }
 
-void *slab_rebalance_thread(void* args) {
+void *slab_rebalance_thread(void* arg) {
     ((slab_allocator *) arg)->_slab_rebalance_thread();
     return NULL;
 }

@@ -46,67 +46,78 @@ enum reassign_result_type {
 
 
 void *slab_maintenance_thread(void* arg);
-void *slab_rebalance_thread(void* args);
+void *slab_rebalance_thread(void* arg);
 
 
 class slab_allocator {
-    private:
+private:
 /* Access to the slab allocator is protected by this lock */
-        pthread_mutex_t slabs_lock;
-        pthread_mutex_t slabs_rebalance_lock;
+    pthread_mutex_t slabs_lock;
+    pthread_mutex_t slabs_rebalance_lock;
 
-        pthread_t rebalance_tid;
-        pthread_t maintenance_tid;
+    pthread_t rebalance_tid;
+    pthread_t maintenance_tid;
 
-        pthread_cond_t slab_rebalance_cond;
+    int do_run_slab_thread;
+    int do_run_slab_rebalance_thread;
 
-        struct slab_rebalance slab_rebal;
-        int slab_rebalance_signal;
+    pthread_cond_t maintenance_cond;
+    pthread_cond_t slab_rebalance_cond;
 
-        int slab_bulk_check;
+    struct slab_rebalance slab_rebal;
+    int slab_rebalance_signal;
 
-        slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
-        size_t mem_limit;
-        size_t mem_malloced;
-        size_t mem_avail;
-        int power_largest;
+    int slab_bulk_check;
 
-        void* mem_base;
-        void* mem_current;
+    slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
+    size_t mem_limit;
+    size_t mem_malloced;
+    size_t mem_avail;
+    int power_largest;
 
-    public:
+    void* mem_base;
+    void* mem_current;
+
+public:
 /** Init the subsystem. 1st argument is the limit on no. of bytes to allocate,
-    0 if no limit. 2nd argument is the growth factor; each slab will use a chunk
-    size equal to the previous slab's chunk size times this factor.
-    3rd argument specifies if the slab allocator should allocate all memory
-    up front (if true), or allocate memory in chunks as it is needed (if false)
-*/
-        slab_allocator(const size_t limit, const double factor = 1.25, const bool prealloc = false);
+ *  0 if no limit. 2nd argument is the growth factor; each slab will use a chunk
+ *  size equal to the previous slab's chunk size times this factor.
+ *  3rd argument specifies if the slab allocator should allocate all memory
+ *  up front (if true), or allocate memory in chunks as it is needed (if false)
+ */
+    slab_allocator(const size_t limit, const double factor = 1.25, const bool prealloc = false);
 
 /** Given object size, return id to use when allocating/freeing memory for object
  *  0 means error: can't store such a large object */
-        unsigned int slabs_clsid(const size_t size);
+    unsigned int slabs_clsid(const size_t size);
 
 /** Allocate object of given length, 0 on error */
-        void *slabs_alloc(size_t size, unsigned int id);
+    void *slabs_alloc(size_t size, unsigned int id);
 
 /** Free previously allocated object */
-        void slabs_free(void *ptr, size_t size, unsigned int id);
+    void slabs_free(void *ptr, size_t size, unsigned int id);
 
-        enum reassign_result_type slabs_reassign(int src, int dst);
+    enum reassign_result_type slabs_reassign(int src, int dst);
 
-        int start_slab_maintenance_thread(void);
-        void stop_slab_maintenance_thread(void);
+    int slab_automove_decision(int *src, int *dst);
 
-        void slabs_rebalancer_pause(void);
-        void slabs_rebalancer_resume(void);
+    int start_slab_maintenance_thread(void);
+    void stop_slab_maintenance_thread(void);
 
 /** Slab rebalancer thread.
  * Does not use spinlocks since it is not timing sensitive. Burn less CPU and
  * go to sleep if locks are contended */
-        void _slab_maintenance_thread(void);
+    void _slab_maintenance_thread(void);
+
+
+    void slabs_rebalancer_pause(void);
+    void slabs_rebalancer_resume(void);
+
+    int slab_rebalance_start(void);
+    int slab_rebalance_move(void);
+    int slab_rebalance_finish(void);
 
 /** Slab mover thread.
  * Sits waiting for a condition to jump off and shovel some memory about */
-        void _slab_rebalance_thread(void);
+    void _slab_rebalance_thread(void);
 };
