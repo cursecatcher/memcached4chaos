@@ -199,11 +199,8 @@ void assoc_array::stop_assoc_maintenance_thread(void) {
     pthread_join(this->maintenance_tid, NULL);
 }
 
-
-void* assoc_maintenance_thread(void *arg) {
-    assoc_array *array = (assoc_array *) arg;
-
-    while (array->get_do_run_maintenance_thread()) {
+void* assoc_array::_assoc_maintenance_thread(void) {
+    while (this->do_run_maintenance_thread) {
         int ii = 0;
 
         /* Lock the cache, and bulk move multiple buckets to the new
@@ -211,55 +208,52 @@ void* assoc_maintenance_thread(void *arg) {
         item_lock_global();
         mutex_lock(&cache_lock);
 
-        for (ii = 0; ii < array->get_hash_bulk_move() && array->get_expanding(); ++ii) {
+        for (ii = 0; ii < this->hash_bulk_move && this->expanding; ++ii) {
             item *it, *next;
             int bucket;
 
-            //array->old_hashtable[array->expand_bucket]
-            for (it = array->get_old_hashtable(array->get_expand_bucket()); it != NULL; it = next) {
+            for (it = this->old_hashtable[this->expand_bucket]; NULL != it; it = next) {
                 next = it->h_next;
 
-                bucket = (int) hash::hash_function(ITEM_key(it), it->nkey) & hashmask(array->get_hashpower());
-                it->h_next = array->get_primary_hashtable(bucket); //array->primary_hashtable[bucket];
-                array->set_primary_hashtable(bucket, it); //array->primary_hashtable[bucket] = it;
+                bucket = hash::hash_function(ITEM_key(it), it->nkey) & hashmask(this->hashpower);
+                it->h_next = this->primary_hashtable[bucket];
+                this->primary_hashtable[bucket] = it;
             }
 
-            array->set_old_hashtable(array->get_expand_bucket(), NULL);
-//            array->old_hashtable[array->expand_bucket] = NULL;
-            array->set_expand_bucket(array->get_expand_bucket() + 1); //increment??
-//            array->expand_bucket++;
+            this->old_hashtable[this->expand_bucket] = NULL;
+            this->expand_bucket++;
 
-            if (array->get_expand_bucket() == hashsize(array->get_hashpower() - 1)) {
-                array->set_expanding(false);
-                free(array->get_old_hashtable());
-/// STATS
-/*              STATS_LOCK();
+            if (this->expand_bucket == hashsize(this->hashpower - 1)) {
+                this->expanding = false;
+                free(this->old_hashtable);
+
+/*             STATS_LOCK(); /// STATS
                 stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
                 stats.hash_is_expanding = 0;
                 STATS_UNLOCK(); */
-/// SETTINGS
-/*              if (settings.verbose > 1)
-                    std::cerr << "Hash table expansion done." << endl; */
+/* /// SETTINGS
+                if (settings.verbose > 1)
+                    std::cerr << "Hash table expansion done" << std::endl; */
             }
         }
 
         mutex_unlock(&cache_lock);
         item_unlock_global();
 
-        if (!array->get_expanding()) {
+        if (!this->expanding) {
             /* finished expanding. tell all threads to use fine-grained locks */
             switch_item_lock_type(ITEM_LOCK_GRANULAR);
             slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
             mutex_lock(&cache_lock);
-            array->set_started_expanding(false);
-            array->manipulate_maintenance_cond();
+            this->started_expanding = false;
+            pthread_cond_wait(&this->maintenance_cond, &cache_lock);
             /* Before doing anything, tell threads to use a global lock */
             mutex_unlock(&cache_lock);
             slabs_rebalancer_pause();
             switch_item_lock_type(ITEM_LOCK_GLOBAL);
             mutex_lock(&cache_lock);
-            array->assoc_expand();
+            this->assoc_expand();
             mutex_unlock(&cache_lock);
         }
     }
@@ -267,3 +261,6 @@ void* assoc_maintenance_thread(void *arg) {
     return NULL;
 }
 
+void* assoc_maintenance_thread(void *arg) {
+    return ((assoc_array *) arg)->_assoc_maintenance_thread();
+}
