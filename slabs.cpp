@@ -128,7 +128,7 @@ int slab_allocator::start_slab_maintenance_thread(void) {
     if ((ret = pthread_create(
             &this->maintenance_tid,
             NULL,
-            (void* (*)(void*)) &slab_allocator::slab_maintenance_thread,
+            slab_maintenance_thread,
             (void*) this)) != 0) {
         std::cerr << "Can't reate slab maintenance thread: " << strerror(ret) << std::cerr;
         return -1;
@@ -136,7 +136,7 @@ int slab_allocator::start_slab_maintenance_thread(void) {
     if ((ret = pthread_create(
             &this->rebalance_tid,
             NULL,
-            (void* (*)(void*)) &slab_allocator::slab_rebalance_thread,
+            slab_rebalance_thread,
             (void*) this)) != 0) {
         std::cerr << "Can't create rebalance thread: " << strerror(ret) << std::endl;
         return -1;
@@ -160,15 +160,15 @@ void slab_allocator::slabs_rebalancer_resume(void) {
 	pthread_mutex_unlock(&this->slabs_rebalance_lock);
 }
 
-void* slab_allocator::slab_maintenance_thread(void *arg) {
+void slab_allocator::_slab_maintenance_thread(void) {
    int src, dest;
-   slab_allocator *s = (slab_allocator *) arg;
 
-    while (s->do_run_slab_thread) {
+    while (this->do_run_slab_thread) {
+        /// SETTINGS
         if (settings.slab_automove == 1) {
-            if (s->slab_automove_decision(&src, &dest) == 1) {
+            if (this->slab_automove_decision(&src, &dest) == 1) {
                 /* Blind to the return codes. It will retry on its own */
-                s->slabs_reassign(src, dest);
+                this->slabs_reassign(src, dest);
             }
             sleep(1);
         } else {
@@ -177,40 +177,46 @@ void* slab_allocator::slab_maintenance_thread(void *arg) {
             sleep(5);
         }
     }
-
-    return NULL;
 }
 
-void* slab_allocator::slab_rebalance_thread(void *arg) {
+void slab_allocator::_slab_rebalance_thread(void) {
     int was_busy = 0;
-    slab_allocator *s = (slab_allocator*) arg;
     /* So we first pass into cond_wait with the mutex held */
-    mutex_lock(&s->slabs_rebalance_lock);
+    mutex_lock(&this->slabs_rebalance_lock);
 
-    while (s->do_run_slab_rebalance_thread) {
-        if (s->slab_rebalance_signal == 1) {
-            if (s->slab_rebalance_start() < 0) {
+    while (this->do_run_slab_rebalance_thread) {
+        if (this->slab_rebalance_signal == 1) {
+            if (this->slab_rebalance_start() < 0) {
                 /* Handle errors with more specifity as required. */
-                s->slab_rebalance_signal = 0;
+                this->slab_rebalance_signal = 0;
             }
 
             was_busy = 0;
-        } else if (s->slab_rebalance_signal && s->slab_rebal.slab_start != NULL) {
-            was_busy = s->slab_rebalance_move();
+        } else if (this->slab_rebalance_signal && this->slab_rebal.slab_start != NULL) {
+            was_busy = this->slab_rebalance_move();
         }
 
-        if (s->slab_rebal.done) {
-            s->slab_rebalance_finish();
+        if (this->slab_rebal.done) {
+            this->slab_rebalance_finish();
         } else if (was_busy) {
             /* Stuck waiting for some items to unlock, so slow down a bit
              * to give them a chance to free up */
             usleep(50);
         }
 
-        if (s->slab_rebalance_signal == 0) {
+        if (this->slab_rebalance_signal == 0) {
             /* always hold this lock while we're running */
-            pthread_cond_wait(&s->slab_rebalance_cond, &s->slabs_rebalance_lock);
+            pthread_cond_wait(&this->slab_rebalance_cond, &this->slabs_rebalance_lock);
         }
     }
+}
+
+void *slab_maintenance_thread(void* arg) {
+    ((slab_allocator *) arg)->_slab_maintenance_thread();
+    return NULL;
+}
+
+void *slab_rebalance_thread(void* args) {
+    ((slab_allocator *) arg)->_slab_rebalance_thread();
     return NULL;
 }

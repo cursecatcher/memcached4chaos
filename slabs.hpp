@@ -45,6 +45,10 @@ enum reassign_result_type {
 };
 
 
+void *slab_maintenance_thread(void* arg);
+void *slab_rebalance_thread(void* args);
+
+
 class slab_allocator {
     private:
 /* Access to the slab allocator is protected by this lock */
@@ -100,9 +104,9 @@ class slab_allocator {
 /** Slab rebalancer thread.
  * Does not use spinlocks since it is not timing sensitive. Burn less CPU and
  * go to sleep if locks are contended */
-        void *slab_maintenance_thread(void *arg);
+        void _slab_maintenance_thread(void);
 
 /** Slab mover thread.
  * Sits waiting for a condition to jump off and shovel some memory about */
-        void *slab_rebalance_thread(void *arg);
+        void _slab_rebalance_thread(void);
 };
