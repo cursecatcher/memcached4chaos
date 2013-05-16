@@ -125,6 +125,5 @@ and these came close:
 }
 
 namespace hash {
-    uint32_t hash_function(const void *key, size_t length);
-    uint32_t hash_function(const void* key, size_t length, const uint32_t initval);
+    uint32_t hash_function(const void* key, size_t length, const uint32_t initval = 0);
 }
