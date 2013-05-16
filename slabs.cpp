@@ -1,6 +1,6 @@
 #include "slabs.hpp"
 
-
+/**** Costruttore ****/
 slab_allocator::slab_allocator
     (const size_t limit, const double factor, const bool prealloc) {
 
@@ -74,7 +74,158 @@ slab_allocator::slab_allocator
     } */
 }
 
+/**** Metodi privati ****/
+int slab_allocator::grow_slab_list(const unsigned int id) {
+    slabclass_t *p = &this->slabclass[id];
 
+    if (p->slabs == p->list_size) {
+        size_t new_size =  (p->list_size != 0) ? p->list_size * 2 : 16;
+        void *new_list = realloc(p->slab_list, new_size * sizeof(void *));
+
+        if (new_list == 0)
+            return 0;
+        p->list_size = new_size;
+        p->slab_list = new_list;
+    }
+    return 1;
+}
+
+void slab_allocator::split_slab_page_into_freelist(char *ptr, const unsigned int id) {
+    slabclass_t *p = &this->slabclass[id];
+
+    for (int x = 0; x < p->perslab; x++) {
+        this->do_slabs_free(ptr, 0, id);
+        ptr += p->size;
+    }
+}
+
+int slab_allocator::do_slabs_newslab(const unsigned int id) {
+    slabclass_t *p = &this->slabclass[id];
+    char *ptr;
+    /// SETTINGS
+    int len = settings.slab_reassign ? settings.item_size_max
+        : p->size * p->perslab;
+
+    if ((this->mem_limit && this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
+        (this->grow_slab_list(id) == 0) ||
+        ((ptr = this->memory_allocate((size_t)len)) == 0)) {
+
+//        MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id); /// TRACE
+        return 0;
+    }
+
+    memset(ptr, 0, (size_t)len);
+    this->split_slab_page_into_freelist(ptr, id);
+
+    p->slab_list[p->slabs++] = ptr;
+    this->mem_malloced += len;
+//    MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id); /// TRACE
+
+    return 1;
+}
+
+void *slab_allocator::do_slabs_alloc(const size_t size, unsigned int id) {
+    slabclass_t *p;
+    void *ret = NULL;
+    item *it = NULL;
+
+    if (id < POWER_SMALLEST || id > this->power_largest) {
+//        MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0); /// TRACE
+        return NULL;
+    }
+
+    p = &this->slabclass[id];
+    assert(p->sl_curr == 0 || ((item *)p->slots)->slabs_clsid == 0);
+
+    /* fail unless we have space at the end of a recently allocated page,
+       we have something on our freelist, or we could allocate a new page */
+    if (! (p->sl_curr != 0 || this->do_slabs_newslab(id) != 0)) {
+        /* We don't have more memory available */
+        ret = NULL;
+    } else if (p->sl_curr != 0) {
+        /* return off our freelist */
+        it = (item *)p->slots;
+        p->slots = it->next;
+        if (it->next)
+            it->next->prev = 0;
+        p->sl_curr--;
+        ret = (void *)it;
+    }
+
+    if (ret)
+        p->requested += size;
+/*
+    if (ret) { /// TRACE
+        p->requested += size;
+        MEMCACHED_SLABS_ALLOCATE(size, id, p->size, ret); /// TRACE
+    } else {
+        MEMCACHED_SLABS_ALLOCATE_FAILED(size, id); /// TRACE
+    } */
+
+    return ret;
+}
+
+void slab_allocator::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
+    slabclass_t *p;
+    item *it;
+
+    assert(((item *)ptr)->slabs_clsid == 0);
+    assert(id >= POWER_SMALLEST && id <= this->power_largest);
+
+    if (id < POWER_SMALLEST || id > this->power_largest)
+        return;
+
+//    MEMCACHED_SLABS_FREE(size, id, ptr); /// TRACE
+    p = &this->slabclass[id];
+
+    it = (item *)ptr;
+    it->it_flags |= ITEM_SLABBED;
+    it->prev = 0;
+    it->next = (item*) p->slots;
+
+    if (it->next)
+        it->next->prev = it;
+
+    p->slots = it;
+    p->sl_curr++;
+    p->requested -= size;
+
+    return;
+}
+
+enum reassign_result_type do_slabs_reassign(int src, int dst) {
+    if (this->slab_rebalance_signal != 0)
+        return REASSIGN_RUNNING;
+
+    if (src == dst)
+        return REASSIGN_SRC_DST_SAME;
+
+    /* Special indicator to choose ourselves. */
+    if (src == -1) {
+        src = this->slabs_reassign_pick_any(dst);
+        /* TODO: If we end up back at -1, return a new error type */
+    }
+
+    if (src < POWER_SMALLEST || src > this->power_largest ||
+        dst < POWER_SMALLEST || dst > this->power_largest)
+        return REASSIGN_BADCLASS;
+
+    if (this->slabclass[src].slabs < 2)
+        return REASSIGN_NOSPARE;
+
+    this->slab_rebal.s_clsid = src;
+    this->slab_rebal.d_clsid = dst;
+
+    this->slab_rebalance_signal = 1;
+    pthread_cond_signal(&this->slab_rebalance_cond);
+
+    return REASSIGN_OK;
+}
+
+
+
+
+/**** Metodi pubblici ****/
 unsigned int slab_allocator::slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
 
@@ -419,7 +570,7 @@ int slab_allocator::slab_rebalance_finish(void) {
     slabclass_t *d_cls;
 
     pthread_mutex_lock(&cache_lock);
-    pthread_mutex_lock(&this->labs_lock);
+    pthread_mutex_lock(&this->slabs_lock);
 
     s_cls = &this->slabclass[this->slab_rebal.s_clsid];
     d_cls = &this->slabclass[this->slab_rebal.d_clsid];
@@ -433,7 +584,7 @@ int slab_allocator::slab_rebalance_finish(void) {
     memset(this->slab_rebal.slab_start, 0, (size_t) settings.item_size_max);
 
     d_cls->slab_list[d_cls->slabs++] = this->slab_rebal.slab_start;
-    this->split_slab_page_into_freelist(this->slab_rebal.slab_start, this->slab_rebal.d_clsid);
+    this->split_slab_page_into_freelist((char*) this->slab_rebal.slab_start, this->slab_rebal.d_clsid);
 
     this->slab_rebal.done       = 0;
     this->slab_rebal.s_clsid    = 0;

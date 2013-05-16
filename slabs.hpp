@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include "hash.hpp"
@@ -81,6 +82,16 @@ private:
 
     void* mem_base;
     void* mem_current;
+
+
+    int grow_slab_list (const unsigned int id);
+    void split_slab_page_into_freelist(char *ptr, const unsigned int id);
+
+    int do_slabs_newslab(const unsigned int id);
+    void *do_slabs_alloc(const size_t size, unsigned int id);
+    void do_slabs_free(void *ptr, const size_t size, unsigned int id);
+    enum reassign_result_type do_slabs_reassign(int src, int dst);
+
 
 public:
 /** Init the subsystem. 1st argument is the limit on no. of bytes to allocate,
