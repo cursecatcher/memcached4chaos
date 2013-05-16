@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include "hash.hpp"
 
 #include "defines.h"
 
@@ -44,6 +45,9 @@ enum reassign_result_type {
     REASSIGN_SRC_DST_SAME
 };
 
+enum move_status {
+    MOVE_PASS=0, MOVE_DONE, MOVE_BUSY, MOVE_LOCKED
+};
 
 void *slab_maintenance_thread(void* arg);
 void *slab_rebalance_thread(void* arg);
