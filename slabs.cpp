@@ -17,8 +17,8 @@ slab_allocator::slab_allocator
 
 /* slabs init */
 
-    int i = POWER_SMALLEST - 1; /// SETTINGS
-    unsigned int size = sizeof(item);//sizeof(item) + settings.chunk_size;
+    int i = POWER_SMALLEST - 1;
+    unsigned int size = sizeof(item) + settings.chunk_size; /// SETTINGS
 
     this->mem_limit = limit;
 
@@ -36,29 +36,29 @@ slab_allocator::slab_allocator
 
     memset(this->slabclass, 0, sizeof(this->slabclass));
     /// SETTINGS
-    while (++i < POWER_LARGEST && size <= /*settings.item_size_max*/10 / factor) {
+    while (++i < POWER_LARGEST && size <= settings.item_size_max / factor) {
         /* Make sure items are always n-byte aligned */
         if (size % CHUNK_ALIGN_BYTES)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
-        this->slabclass[i].size = size;     /// SETTINGS
-        this->slabclass[i].perslab = /*settings.item_size_max*/10 / this->slabclass[i].size;
+        this->slabclass[i].size = size;
+        this->slabclass[i].perslab = settings.item_size_max / this->slabclass[i].size; /// SETTINGS
         size *= factor;
-        /*  /// SETTINGS
+        /// SETTINGS
         if (settings.verbose > 1) {
             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
                     i, slabclass[i].size, slabclass[i].perslab);
-        } */
+        }
     }
 
-    this->power_largest = i;     /// SETTINGS
-    this->slabclass[this->power_largest].size = 10;//settings.item_size_max;
+    this->power_largest = i;
+    this->slabclass[this->power_largest].size = settings.item_size_max; /// SETTINGS
     this->slabclass[this->power_largest].perslab = 1;
-    /* /// SETTINGS
+    /// SETTINGS
     if (settings.verbose > 1) {
         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
                 i, slabclass[i].size, slabclass[i].perslab);
-    } */
+    }
 
     /* for the test suite:  faking of how much we've already malloc'd */
     {
@@ -68,10 +68,10 @@ slab_allocator::slab_allocator
         }
 
     }
-/*
+
     if (prealloc) {
         slabs_preallocate(this->power_largest);
-    } */
+    }
 }
 
 /**** Metodi privati ****/
@@ -84,9 +84,11 @@ int slab_allocator::grow_slab_list(const unsigned int id) {
 
         if (new_list == 0)
             return 0;
+
         p->list_size = new_size;
         p->slab_list = new_list;
     }
+
     return 1;
 }
 
@@ -267,8 +269,6 @@ int slab_allocator::slabs_reassign_pick_any(int dst) {
 
     return -1;
 }
-
-
 
 
 /**** Metodi pubblici ****/
@@ -499,9 +499,8 @@ int slab_allocator::slab_rebalance_start(void) {
     this->slab_rebalance_signal = 2;
 
     /// SETTINGS
-/*  if (settings.verbose > 1) {
+    if (settings.verbose > 1)
         std::cerr << "Started a slab rebalance" << std::endl;
-    } */
 
     pthread_mutex_unlock(&this->slabs_lock);
     pthread_mutex_unlock(&cache_lock);
@@ -562,11 +561,10 @@ int slab_allocator::slab_rebalance_move(void) {
                     }
                 } else {
                     /// SETTINGS
-                    /*
                     if (settings.verbose > 2) {
                         fprintf(stderr, "Slab reassign hit a busy item: refcount: %d (%d -> %d)\n",
                             it->refcount, slab_rebal.s_clsid, slab_rebal.d_clsid);
-                    } */
+                    }
                     status = MOVE_BUSY;
                 }
                 item_trylock_unlock(hold_lock);
@@ -648,11 +646,9 @@ int slab_allocator::slab_rebalance_finish(void) {
     stats.slab_reassign_running = false;
     stats.slabs_moved++;
     STATS_UNLOCK(); */
-/* /// SETTINGS
-    if (settings.verbose > 1) {
+    /// SETTINGS
+    if (settings.verbose > 1)
         std::cerr << "Finished a slab move" << std::endl;
-        fprintf(stderr, "finished a slab move\n");
-    } */
 }
 
 void slab_allocator::_slab_rebalance_thread(void) {
