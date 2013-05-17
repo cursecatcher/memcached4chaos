@@ -108,7 +108,7 @@ int slab_allocator::do_slabs_newslab(const unsigned int id) {
 
     if ((this->mem_limit && this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
         (this->grow_slab_list(id) == 0) ||
-        ((ptr = this->memory_allocate((size_t)len)) == 0)) {
+        ((ptr = (char*) this->memory_allocate((size_t) len)) == 0)) {
 
 //        MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id); /// TRACE
         return 0;
@@ -193,7 +193,7 @@ void slab_allocator::do_slabs_free(void *ptr, const size_t size, unsigned int id
     return;
 }
 
-enum reassign_result_type do_slabs_reassign(int src, int dst) {
+enum reassign_result_type slab_allocator::do_slabs_reassign(int src, int dst) {
     if (this->slab_rebalance_signal != 0)
         return REASSIGN_RUNNING;
 
@@ -220,6 +220,52 @@ enum reassign_result_type do_slabs_reassign(int src, int dst) {
     pthread_cond_signal(&this->slab_rebalance_cond);
 
     return REASSIGN_OK;
+}
+
+void* slab_allocator::memory_allocate(size_t size) {
+    void *ret;
+
+    if (this->mem_base == NULL) {
+        /* We are not using a preallocated large memory chunk */
+        ret = malloc(size);
+    } else {
+        ret = this->mem_current;
+
+        if (size > this->mem_avail)
+            return NULL;
+
+        /* mem_current pointer _must_ be aligned!!! */
+        if (size % CHUNK_ALIGN_BYTES)
+            size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
+
+        this->mem_current = ((char*) this->mem_current) + size;
+        this->mem_avail = size < this->mem_avail ?
+                          this->mem_avail - size : 0;
+    }
+
+    return ret;
+}
+
+
+/* Iterate at most once through the slab classes and pick a "random" source.
+ * I like this better than calling rand() since rand() is slow enough that we
+ * can just check all of the classes once instead.
+ */
+int slab_allocator::slabs_reassign_pick_any(int dst) {
+    static int cur = POWER_SMALLEST - 1;
+    int tries = this->power_largest - POWER_SMALLEST + 1;
+
+    for (; tries > 0; tries--) {
+        cur++;
+        if (cur > this->power_largest)
+            cur = POWER_SMALLEST;
+        if (cur == dst)
+            continue;
+        if (this->slabclass[cur].slabs > 1)
+            return cur;
+    }
+
+    return -1;
 }
 
 

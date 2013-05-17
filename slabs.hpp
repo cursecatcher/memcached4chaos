@@ -91,6 +91,8 @@ private:
     void *do_slabs_alloc(const size_t size, unsigned int id);
     void do_slabs_free(void *ptr, const size_t size, unsigned int id);
     enum reassign_result_type do_slabs_reassign(int src, int dst);
+    void *memory_allocate(size_t size);
+    int slabs_reassign_pick_any(int dst);
 
 
 public:
