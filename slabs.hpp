@@ -95,6 +95,8 @@ private:
     void *memory_allocate(size_t size);
     int slabs_reassign_pick_any(int dst);
 
+    void slabs_preallocate (const unsigned int maxslabs);
+
 
 public:
 /** Init the subsystem. 1st argument is the limit on no. of bytes to allocate,

@@ -86,7 +86,7 @@ int slab_allocator::grow_slab_list(const unsigned int id) {
             return 0;
 
         p->list_size = new_size;
-        p->slab_list = new_list;
+        p->slab_list = (void **) new_list;
     }
 
     return 1;
@@ -271,6 +271,31 @@ int slab_allocator::slabs_reassign_pick_any(int dst) {
 }
 
 
+void slab_allocator::slabs_preallocate (const unsigned int maxslabs) {
+    int i;
+    unsigned int prealloc = 0;
+
+    /* pre-allocate a 1MB slab in every size class so people don't get
+       confused by non-intuitive "SERVER_ERROR out of memory"
+       messages.  this is the most common question on the mailing
+       list.  if you really don't want this, you can rebuild without
+       these three lines.  */
+
+    for (i = POWER_SMALLEST; i <= POWER_LARGEST; i++) {
+        if (++prealloc > maxslabs)
+            return;
+        if (this->do_slabs_newslab(i) == 0) {
+            std::cerr << "Error while preallocating slab memory!" << std::endl;
+            std::cerr << "If using -L or other prealloc options, max memory must be ";
+            std::cerr << "at least " << this->power_largest << " megabytes." << std::endl;
+            exit(1);
+        }
+    }
+
+}
+
+
+
 /**** Metodi pubblici ****/
 unsigned int slab_allocator::slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
@@ -339,16 +364,16 @@ int slab_allocator::slab_automove_decision(int *src, int *dst) {
     else
         return 0;
 
-    item_stats_evictions(evicted_new); /// STATS
+//    item_stats_evictions(evicted_new); /// STATS ?
     pthread_mutex_lock(&cache_lock);
 
-    for (i = POWER_SMALLEST; i < power_largest; i++)
+    for (i = POWER_SMALLEST; i < this->power_largest; i++)
         total_pages[i] = this->slabclass[i].slabs;
 
     pthread_mutex_unlock(&cache_lock);
 
     /* Find a candidate source; something with zero evicts 3+ times */
-    for (i = POWER_SMALLEST; i < power_largest; i++) {
+    for (i = POWER_SMALLEST; i < this->power_largest; i++) {
         evicted_diff = evicted_new[i] - evicted_old[i];
         if (evicted_diff == 0 && total_pages[i] > 2) {
             slab_zeroes[i]++;
