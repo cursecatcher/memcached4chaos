@@ -270,7 +270,6 @@ int slab_allocator::slabs_reassign_pick_any(int dst) {
     return -1;
 }
 
-
 void slab_allocator::slabs_preallocate (const unsigned int maxslabs) {
     int i;
     unsigned int prealloc = 0;
@@ -294,8 +293,6 @@ void slab_allocator::slabs_preallocate (const unsigned int maxslabs) {
 
 }
 
-
-
 /**** Metodi pubblici ****/
 unsigned int slab_allocator::slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
@@ -310,7 +307,6 @@ unsigned int slab_allocator::slabs_clsid(const size_t size) {
     return res;
 }
 
-
 void* slab_allocator::slabs_alloc(size_t size, unsigned int id) {
     void *ret;
 
@@ -321,13 +317,11 @@ void* slab_allocator::slabs_alloc(size_t size, unsigned int id) {
     return ret;
 }
 
-
 void slab_allocator::slabs_free(void *ptr, size_t size, unsigned int id) {
     pthread_mutex_lock(&this->slabs_lock);
     do_slabs_free(ptr, size, id);
     pthread_mutex_unlock(&this->slabs_lock);
 }
-
 
 enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
     enum reassign_result_type ret;

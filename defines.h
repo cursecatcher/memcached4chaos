@@ -6,7 +6,11 @@ typedef unsigned long   ub4; /* unsigned 4-byte quantities */
 typedef unsigned char   ub1; /* unsigned 1-byte quantities */
 
 #define HASHPOWER_DEFAULT 16
+
+#define ITEM_LINKED 1
 #define ITEM_CAS 2
+#define ITEM_SLABBED 4
+#define ITEM_FETCHED 8
 
 #define hashsize(n) ((ub4)1<<(n))
 #define hashmask(n) (hashsize(n)-1)
