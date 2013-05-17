@@ -1,6 +1,5 @@
 #include "assoc.hpp"
 
-pthread_mutex_t cache_lock;
 
 assoc_array::assoc_array(const int hashpower_init) {
     pthread_cond_init(&this->maintenance_cond, NULL);
@@ -139,8 +138,8 @@ void assoc_array::assoc_expand(void) {
     this->primary_hashtable = (item **) calloc(hashsize(this->hashpower + 1), sizeof(void *));
     if (this->primary_hashtable) {
 /// SETTINGS
-/*      if (settings.verbose > 1)
-            std::cerr << "Hash table expansion starting." << std::endl; */
+      if (settings.verbose > 1)
+            std::cerr << "Hash table expansion starting." << std::endl;
         this->hashpower++;
         this->expanding = true;
         this->expand_bucket = 0;
@@ -231,9 +230,9 @@ void* assoc_array::_assoc_maintenance_thread(void) {
                 stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
                 stats.hash_is_expanding = 0;
                 STATS_UNLOCK(); */
-/* /// SETTINGS
+/// SETTINGS
                 if (settings.verbose > 1)
-                    std::cerr << "Hash table expansion done" << std::endl; */
+                    std::cerr << "Hash table expansion done" << std::endl;
             }
         }
 

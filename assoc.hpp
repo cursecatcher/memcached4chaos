@@ -5,12 +5,10 @@
 #include <pthread.h>
 #include <iostream>
 
-#include "hash.hpp"
-#include "defines.h"
+#include "slabs.hpp"
+//#include "defines.h"
 
 using namespace hash;
-
-extern pthread_mutex_t cache_lock;
 
 /* necessaria per la corrispondenza dei tipi in pthread_create */
 void* assoc_maintenance_thread(void *arg);
