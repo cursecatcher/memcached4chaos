@@ -22,6 +22,8 @@ le parti hanno al momento valori di default
 
 6. in assoc.cpp: in stop_assoc_maintenance_thread: riscrivere mutex_lock()
 
-7. Nelle funzioni relative ai slab-thread vanno definiti i  metodi mancanti
+7. Nelle funzioni relative ai slab-thread vanno definiti i  metodi mancanti (OK)
 8. Verificare le inizializzazioni degli attributi di slab
-9. Implementare slabs_reassign_pick_any (e non solo)
+9. Implementare slabs_reassign_pick_any (e non solo) (OK)
+10. Inizializzare cache_lock (extern)
+11. Inizializzare settings (extern)

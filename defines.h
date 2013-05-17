@@ -37,8 +37,6 @@ typedef unsigned char   ub1; /* unsigned 1-byte quantities */
          + (item)->nsuffix + (item)->nbytes \
          + (((item)->it_flags & ITEM_CAS) ? sizeof(uint64_t) : 0))
 
-//pthread_mutex_t cache_lock;
-
 typedef unsigned int rel_time_t;
 
 typedef struct _stritem {
