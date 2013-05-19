@@ -27,3 +27,4 @@ le parti hanno al momento valori di default
 9. Implementare slabs_reassign_pick_any (e non solo) (OK)
 10. Inizializzare cache_lock (extern)
 11. Inizializzare settings (extern)
+12. Inizializzare assoc_array::slabbing

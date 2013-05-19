@@ -2,7 +2,7 @@ NAME = test
 CC = g++
 LIBS = -lpthread
 
-all: test.o hash.o assoc.o
+all: test.o hash.o assoc.o slabs.o 
 	$(CC) -o $(NAME) $^ $(LIBS)
 
 test.o: test.cpp
