@@ -242,14 +242,14 @@ void* assoc_array::_assoc_maintenance_thread(void) {
         if (!this->expanding) {
             /* finished expanding. tell all threads to use fine-grained locks */
             switch_item_lock_type(ITEM_LOCK_GRANULAR);
-            slabs_rebalancer_resume();
+            this->slabbing->slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
             mutex_lock(&cache_lock);
             this->started_expanding = false;
             pthread_cond_wait(&this->maintenance_cond, &cache_lock);
             /* Before doing anything, tell threads to use a global lock */
             mutex_unlock(&cache_lock);
-            slabs_rebalancer_pause();
+            this->slabbing->slabs_rebalancer_pause();
             switch_item_lock_type(ITEM_LOCK_GLOBAL);
             mutex_lock(&cache_lock);
             this->assoc_expand();

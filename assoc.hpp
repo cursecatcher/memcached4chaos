@@ -15,6 +15,7 @@ void* assoc_maintenance_thread(void *arg);
 
 class assoc_array {
 private:
+    slab_allocator *slabbing;
     int hash_bulk_move;
     volatile int do_run_maintenance_thread;
 
