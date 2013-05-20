@@ -337,6 +337,20 @@ enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
     return ret;
 }
 
+void slab_allocator::slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
+    pthread_mutex_lock(&this->slabs_lock);
+
+    if (id < POWER_SMALLEST || id > this->power_largest) {
+        std::cerr << "Internal error! Invalid slab class" << std::endl;
+        abort();
+    }
+
+    slabclass_t *p = &this->slabclass[id];
+    p->requested = p->requested - old + ntotal;
+
+    pthread_mutex_unlock(&this->slabs_lock);
+}
+
 int slab_allocator::slab_automove_decision(int *src, int *dst) {
     static uint64_t evicted_old[POWER_LARGEST];
     static unsigned int slab_zeroes[POWER_LARGEST];

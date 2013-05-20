@@ -119,6 +119,8 @@ public:
 
     enum reassign_result_type slabs_reassign(int src, int dst);
 
+    void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal);
+
     int slab_automove_decision(int *src, int *dst);
 
     int start_slab_maintenance_thread(void);
