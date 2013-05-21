@@ -350,9 +350,9 @@ item *items_management::do_item_get(const char *key, const size_t nkey, const ui
         /* Optimization for slab reassignment. prevents popular items from
          * jamming in busy wait. Can only do this here to satisfy lock order
          * of item_lock, cache_lock, slabs_lock. */
-        if (this->slabbing->slab_rebalance_signal &&
-            ((void *)it >= this->slab_rebal.slab_start &&
-            (void *)it < this->slab_rebal.slab_end)) {
+        if (this->slabbing->get_slab_rebalance_signal() && /// SLABS
+            ((void *)it >= this->slabbing->get_slab_rebal().slab_start &&
+            (void *)it < this->slabbing->get_slab_rebal().slab_end)) {
 
             this->do_item_unlink_nolock(it, hv);
             this->do_item_remove(it);

@@ -57,6 +57,15 @@ void *slab_rebalance_thread(void* arg);
 
 class slab_allocator {
 private:
+    slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
+    size_t mem_limit;
+    size_t mem_malloced;
+    size_t mem_avail;
+    int power_largest;
+
+    void* mem_base;
+    void* mem_current;
+
 /* Access to the slab allocator is protected by this lock */
     pthread_mutex_t slabs_lock;
     pthread_mutex_t slabs_rebalance_lock;
@@ -75,15 +84,6 @@ private:
 
     int slab_bulk_check;
 
-    slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
-    size_t mem_limit;
-    size_t mem_malloced;
-    size_t mem_avail;
-    int power_largest;
-
-    void* mem_base;
-    void* mem_current;
-
 
     int grow_slab_list (const unsigned int id);
     void split_slab_page_into_freelist(char *ptr, const unsigned int id);
@@ -97,7 +97,6 @@ private:
 
     void slabs_preallocate (const unsigned int maxslabs);
 
-
 public:
 /** Init the subsystem. 1st argument is the limit on no. of bytes to allocate,
  *  0 if no limit. 2nd argument is the growth factor; each slab will use a chunk
@@ -106,6 +105,11 @@ public:
  *  up front (if true), or allocate memory in chunks as it is needed (if false)
  */
     slab_allocator(const size_t limit, const double factor = 1.25, const bool prealloc = false);
+
+    // utilizzate in items.* - misura temporanea, da sostituire con friend
+    int get_slab_rebalance_signal() { return this->slab_rebalance_signal; }
+    struct slab_rebalance get_slab_rebal() { return this->slab_rebal; }
+
 
 /** Given object size, return id to use when allocating/freeing memory for object
  *  0 means error: can't store such a large object */
