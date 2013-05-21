@@ -1,9 +1,21 @@
 #include <cstdio>
-
 #include "assoc.hpp"
 
-
 #define LARGEST_ID POWER_LARGEST
+
+typedef struct {
+    uint64_t evicted;
+    uint64_t evicted_nonzero;
+    rel_time_t evicted_time;
+    uint64_t reclaimed;
+    uint64_t outofmemory;
+    uint64_t tailrepairs;
+    uint64_t expired_unfetched;
+    uint64_t evicted_unfetched;
+} itemstats_t;
+
+itemstats_t itemstats[LARGEST_ID];
+
 
 class items_management {
     slab_allocator *slabbing;
@@ -16,8 +28,16 @@ class items_management {
     size_t item_make_header(const uint8_t nkey, const int flags,
                              const int nbytes, char *suffix, uint8_t *nsuffix);
 
+    void item_link_q(item *it);
+    void item_unlink_q(item *it);
+
 public:
     items_management();
+
+    inline uint64_t get_cas_id(void) {
+        static uint64_t cas_id = 0;
+        return ++cas_id;
+    }
 
     item *do_item_alloc(char *key, const size_t nkey, const int flags, const rel_time_t exptime, const int nbytes, const uint32_t cur_hv);
     void item_free(item *it);

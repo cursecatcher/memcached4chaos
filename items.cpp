@@ -23,6 +23,66 @@ size_t items_management::
     return sizeof(item) + nkey + *nsuffix + nbytes;
 }
 
+
+void items_management::item_link_q(item *it) { /* item is the new head */
+    item **head, **tail;
+
+    assert(it->slabs_clsid < LARGEST_ID);
+    assert((it->it_flags & ITEM_SLABBED) == 0);
+
+    head = &this->heads[it->slabs_clsid];
+    tail = &this->tails[it->slabs_clsid];
+
+    assert(it != *head);
+    assert((*head && *tail) || (*head == 0 && *tail == 0));
+
+    it->prev = 0;
+    it->next = *head;
+
+    if (it->next)
+        it->next->prev = it;
+
+    *head = it;
+
+    if (*tail == 0)
+        *tail = it;
+
+    this->sizes[it->slabs_clsid]++;
+
+    return;
+}
+
+void items_management::item_unlink_q(item *it) {
+    item **head, **tail;
+
+    assert(it->slabs_clsid < LARGEST_ID);
+
+    head = &this->heads[it->slabs_clsid];
+    tail = &this->tails[it->slabs_clsid];
+
+    if (*head == it) {
+        assert(it->prev == 0);
+        *head = it->next;
+    }
+    if (*tail == it) {
+        assert(it->next == 0);
+        *tail = it->prev;
+    }
+
+    assert(it->next != it);
+    assert(it->prev != it);
+
+    if (it->next)
+        it->next->prev = it->prev;
+    if (it->prev)
+        it->prev->next = it->next;
+
+    this->sizes[it->slabs_clsid]--;
+
+    return;
+}
+
+
 item *items_management::
     do_item_alloc(char *key, const size_t nkey, const int flags,
                   const rel_time_t exptime, const int nbytes,
@@ -185,7 +245,7 @@ bool items_management::
         this->item_make_header(nkey + 1, flags, nbytes, prefix, &nsuffix) +
         (settings.use_cas ? sizeof(uint64_t) : 0);
 
-    return slabs_clsid(ntotal) != 0;
+    return this->slabbing->slabs_clsid(ntotal) != 0;
 }
 
 /** may fail if transgresses limits */
