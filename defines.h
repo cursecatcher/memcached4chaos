@@ -5,6 +5,9 @@
 typedef unsigned long   ub4; /* unsigned 4-byte quantities */
 typedef unsigned char   ub1; /* unsigned 1-byte quantities */
 
+#define TAIL_REPAIR_TIME (3*3600)
+#define ITEM_UPDATE_INTERVAL 60
+
 #define HASHPOWER_DEFAULT 16
 
 #define ITEM_LINKED 1
