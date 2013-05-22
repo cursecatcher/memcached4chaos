@@ -30,3 +30,5 @@ le parti hanno al momento valori di default
 12. Inizializzare assoc_array::slabbing
 13. Fare classe per statistiche (ma anche no?)
 14. Rendere slab_rebalance_signal accessibile all'esterno della classe
+15. Togliere i getter in slabs.cpp e rendere slab_allocator e items_management "amiche"
+16. Atomics? 
