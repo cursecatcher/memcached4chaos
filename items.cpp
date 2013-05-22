@@ -1,7 +1,52 @@
 #include "items.hpp"
 
 items_management::items_management() {
+
 }
+
+unsigned short items_management::refcount_incr(unsigned short *refcount) {
+#ifdef HAVE_GCC_ATOMICS
+    return __sync_add_and_fetch(refcount, 1);
+#elif defined(__sun)
+    return atomic_inc_ushort_nv(refcount);
+#else
+    unsigned short res;
+    mutex_lock(&atomics_mutex);
+    (*refcount)++;
+    res = *refcount;
+    mutex_unlock(&atomics_mutex);
+    return res;
+#endif
+}
+
+unsigned short items_management::refcount_decr(unsigned short *refcount) {
+#ifdef HAVE_GCC_ATOMICS
+    return __sync_sub_and_fetch(refcount, 1);
+#elif defined(__sun)
+    return atomic_dec_ushort_nv(refcount);
+#else
+    unsigned short res;
+    mutex_lock(&atomics_mutex);
+    (*refcount)--;
+    res = *refcount;
+    mutex_unlock(&atomics_mutex);
+    return res;
+#endif
+}
+
+
+void *items_management::item_trylock(uint32_t hv) {
+    pthread_mutex_t *lock = &item_locks[(hv & hashmask(hashpower)) % item_lock_count];
+
+    return (pthread_mutex_trylock(lock) == 0 ? lock : NULL);
+}
+
+void items_management::item_trylock_unlock(void *lock) {
+    pthread_mutex_unlock((pthread_mutex_t *) lock);
+}
+
+
+
 
 /**
  * Generates the variable-sized part of the header for an object.
@@ -404,3 +449,6 @@ item *items_management::do_item_get(const char *key, const size_t nkey, const ui
 
     return it;
 }
+
+
+
