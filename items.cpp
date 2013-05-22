@@ -35,8 +35,29 @@ unsigned short items_management::refcount_decr(unsigned short *refcount) {
 }
 
 
+void items_management::item_lock(uint32_t hv) {
+    uint8_t *lock_type = (uint8_t *) pthread_getspecific(this->item_lock_type_key);
+
+//    if (likely(*lock_type == ITEM_LOCK_GRANULAR))
+    if (*lock_type == ITEM_LOCK_GRANULAR)
+        mutex_lock(&this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count]);
+    else
+        mutex_lock(&this->item_global_lock);
+}
+
+void items_management::item_unlock(uint32_t hv) {
+    uint8_t *lock_type = (uint8_t *) pthread_getspecific(this->item_lock_type_key);
+
+//    if (likely(*lock_type == ITEM_LOCK_GRANULAR))
+    if (*lock_type == ITEM_LOCK_GRANULAR)
+        mutex_unlock(&this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count]);
+    else
+        mutex_unlock(&this->item_global_lock);
+}
+
 void *items_management::item_trylock(uint32_t hv) {
-    pthread_mutex_t *lock = &item_locks[(hv & hashmask(hashpower)) % item_lock_count];
+    pthread_mutex_t *lock =
+        &this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count];
 
     return (pthread_mutex_trylock(lock) == 0 ? lock : NULL);
 }
@@ -44,7 +65,6 @@ void *items_management::item_trylock(uint32_t hv) {
 void items_management::item_trylock_unlock(void *lock) {
     pthread_mutex_unlock((pthread_mutex_t *) lock);
 }
-
 
 
 
@@ -379,8 +399,7 @@ void items_management::do_item_update(item *it) {
 
 int items_management::do_item_replace(item *it, item *new_it, const uint32_t hv) {
     /// TRACE
-/*  MEMCACHED_ITEM_REPLACE(ITEM_key(it), it->nkey, it->nbytes,
-                           ITEM_key(new_it), new_it->nkey, new_it->nbytes); */
+//  MEMCACHED_ITEM_REPLACE(ITEM_key(it), it->nkey, it->nbytes, ITEM_key(new_it), new_it->nkey, new_it->nbytes);
     assert((it->it_flags & ITEM_SLABBED) == 0);
     this->do_item_unlink(it, hv);
     return this->do_item_link(new_it, hv);
@@ -451,4 +470,63 @@ item *items_management::do_item_get(const char *key, const size_t nkey, const ui
 }
 
 
+item *items_management::item_alloc(char *key, size_t nkey, int flags, int nbytes) {
+    item *it;
+    /* do_item_alloc handles its own locks */
+    it = this->do_item_alloc(key, nkey, flags, (rel_time_t) 0, nbytes, 0);
+
+    return it;
+}
+
+item *items_management::item_get(const char *key, const size_t nkey) {
+    item *it;
+    uint32_t hv;
+
+    hv = hash::hash_function(key, nkey);
+    this->item_lock(hv);
+    it = this->do_item_get(key, nkey, hv);
+    this->item_unlock(hv);
+
+    return it;
+}
+
+void items_management::item_remove(item *item) {
+    uint32_t hv;
+    hv = hash::hash_function(ITEM_key(item), item->nkey);
+
+    this->item_lock(hv);
+    this->do_item_remove(item);
+    this->item_unlock(hv);
+}
+
+int items_management::item_replace(item *old_it, item *new_it, const uint32_t hv) {
+	return this->do_item_replace(old_it, new_it, hv);
+}
+
+int items_management::item_link(item *item) {
+    int ret;
+    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+
+    this->item_lock(hv);
+    ret = this->do_item_link(item, hv);
+    this->item_unlock(hv);
+
+    return ret;
+}
+
+void items_management::item_unlink(item *item) {
+    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+
+    this->item_lock(hv);
+    this->do_item_unlink(item, hv);
+    this->item_unlock(hv);
+}
+
+void items_management::item_update(item *item) {
+    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+
+    this->item_lock(hv);
+    this->do_item_update(item);
+    this->item_unlock(hv);
+}
 

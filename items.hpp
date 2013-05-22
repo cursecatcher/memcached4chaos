@@ -23,11 +23,17 @@ class items_management {
     assoc_array *associative;
 
     pthread_mutex_t *item_locks;
-    uint32_t item_lock_count; /* size of the item lock hash table */
+    /* size of the item lock hash table */
+    uint32_t item_lock_count;
+    /* this lock is temporarily engaged during a hash table expansion */
+    pthread_mutex_t item_global_lock;
+    /* thread-specific variable for deeply finding the item lock type */
+    pthread_key_t item_lock_type_key;
 
     item *heads[LARGEST_ID];
     item *tails[LARGEST_ID];
     unsigned int sizes[LARGEST_ID];
+
 
 
     size_t item_make_header(const uint8_t nkey, const int flags,
@@ -47,6 +53,8 @@ public:
     unsigned short refcount_incr(unsigned short *refcount);
     unsigned short refcount_decr(unsigned short *refcount);
 
+    void item_lock(uint32_t hv);
+    void item_unlock(uint32_t hv);
     void *item_trylock(uint32_t hv);
     void item_trylock_unlock(void *lock);
 
@@ -65,7 +73,7 @@ public:
 
     /* thread safe */
 
-    item *item_alloc(char *key, size_t nkey, int flags, rel_time_t exptime, int nbytes);
+    item *item_alloc(char *key, size_t nkey, int flags, int nbytes);
 
 //    enum store_item_type store_item(item *item, int comm, conn* c);
     item *item_get(const char *key, const size_t nkey);
