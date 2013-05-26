@@ -4,20 +4,6 @@
 #define LARGEST_ID POWER_LARGEST
 #define hashpower 1 /*** eia, fidati ***/
 
-typedef struct {
-    uint64_t evicted;
-    uint64_t evicted_nonzero;
-    rel_time_t evicted_time;
-    uint64_t reclaimed;
-    uint64_t outofmemory;
-    uint64_t tailrepairs;
-    uint64_t expired_unfetched;
-    uint64_t evicted_unfetched;
-} itemstats_t;
-
-itemstats_t itemstats[LARGEST_ID];
-
-
 class items_management {
     slab_allocator *slabbing;
     assoc_array *associative;
@@ -70,6 +56,7 @@ public:
     void do_item_update(item *it);   /** update LRU time to current and reposition */
     int  do_item_replace(item *it, item *new_it, const uint32_t hv);
     item *do_item_get(const char *key, const size_t nkey, const uint32_t hv);
+    int do_store_item(item *it, const uint32_t hv);
 
     /* thread safe */
 
@@ -82,4 +69,6 @@ public:
     int item_link(item *item);
     void item_unlink(item *item);
     void item_update(item *item);
+    int store_item(item *item);
+
 };

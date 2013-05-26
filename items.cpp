@@ -315,18 +315,11 @@ bool items_management::
 
 /** may fail if transgresses limits */
 int items_management::do_item_link(item *it, const uint32_t hv) {
-//    MEMCACHED_ITEM_LINK(ITEM_key(it), it->nkey, it->nbytes); /// TRACE
     assert((it->it_flags & (ITEM_LINKED|ITEM_SLABBED)) == 0);
     mutex_lock(&cache_lock);
 
     it->it_flags |= ITEM_LINKED;
     it->time = current_time;
-
-/*  STATS_LOCK(); /// STATS
-    stats.curr_bytes += ITEM_ntotal(it);
-    stats.curr_items += 1;
-    stats.total_items += 1;
-    STATS_UNLOCK(); */
 
     /* Allocate a new CAS ID on link. */
     ITEM_set_cas(it, (settings.use_cas) ? get_cas_id() : 0);
@@ -341,15 +334,9 @@ int items_management::do_item_link(item *it, const uint32_t hv) {
 }
 
 void items_management::do_item_unlink(item *it, const uint32_t hv) {
-//    MEMCACHED_ITEM_UNLINK(ITEM_key(it), it->nkey, it->nbytes); /// TRACE
     mutex_lock(&cache_lock);
     if ((it->it_flags & ITEM_LINKED) != 0) {
         it->it_flags &= ~ITEM_LINKED;
-
-/*      STATS_LOCK(); /// STATS
-        stats.curr_bytes -= ITEM_ntotal(it);
-        stats.curr_items -= 1;
-        STATS_UNLOCK(); */
         this->associative->assoc_delete(ITEM_key(it), it->nkey, hv);
         this->item_unlink_q(it);
         this->do_item_remove(it);
@@ -358,15 +345,8 @@ void items_management::do_item_unlink(item *it, const uint32_t hv) {
 }
 
 void items_management::do_item_unlink_nolock(item *it, const uint32_t hv) {
-//    MEMCACHED_ITEM_UNLINK(ITEM_key(it), it->nkey, it->nbytes); /// TRACE
     if ((it->it_flags & ITEM_LINKED) != 0) {
         it->it_flags &= ~ITEM_LINKED;
-
-/*      STATS_LOCK(); /// STATS
-        stats.curr_bytes -= ITEM_ntotal(it);
-        stats.curr_items -= 1;
-        STATS_UNLOCK(); */
-
         this->associative->assoc_delete(ITEM_key(it), it->nkey, hv);
         this->item_unlink_q(it);
         this->do_item_remove(it);
@@ -374,7 +354,6 @@ void items_management::do_item_unlink_nolock(item *it, const uint32_t hv) {
 }
 
 void items_management::do_item_remove(item *it) {
-//    MEMCACHED_ITEM_REMOVE(ITEM_key(it), it->nkey, it->nbytes); /// TRACE
     assert((it->it_flags & ITEM_SLABBED) == 0);
 
     if (refcount_decr(&it->refcount) == 0)
@@ -383,7 +362,6 @@ void items_management::do_item_remove(item *it) {
 
 /** update LRU time to current and reposition */
 void items_management::do_item_update(item *it) {
-//    MEMCACHED_ITEM_UPDATE(ITEM_key(it), it->nkey, it->nbytes); /// TRACE
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->it_flags & ITEM_SLABBED) == 0);
 
@@ -398,14 +376,13 @@ void items_management::do_item_update(item *it) {
 }
 
 int items_management::do_item_replace(item *it, item *new_it, const uint32_t hv) {
-    /// TRACE
-//  MEMCACHED_ITEM_REPLACE(ITEM_key(it), it->nkey, it->nbytes, ITEM_key(new_it), new_it->nkey, new_it->nbytes);
     assert((it->it_flags & ITEM_SLABBED) == 0);
     this->do_item_unlink(it, hv);
     return this->do_item_link(new_it, hv);
 }
 
-item *items_management::do_item_get(const char *key, const size_t nkey, const uint32_t hv) {
+item *items_management::
+    do_item_get(const char *key, const size_t nkey, const uint32_t hv) {
     //mutex_lock(&cache_lock);
     item *it = this->associative->assoc_find(key, nkey, hv);
 
@@ -459,7 +436,6 @@ item *items_management::do_item_get(const char *key, const size_t nkey, const ui
 
         } else {
             it->it_flags |= ITEM_FETCHED;
-//            DEBUG_REFCNT(it, '+'); /// DEBUG
         }
     }
 
@@ -467,6 +443,22 @@ item *items_management::do_item_get(const char *key, const size_t nkey, const ui
         std::cerr << std::endl;
 
     return it;
+}
+
+int items_management::do_store_item(item *it, const uint32_t hv) {
+    item *old_it = this->do_item_get(ITEM_key(it), it->nkey, hv);
+    int stored;
+
+    if (old_it != NULL) {
+        stored = this->item_replace(old_it, it, hv);
+        this->do_item_remove(old_it);
+    }
+    else {
+        stored = this->do_item_link(it, hv); //item_link??
+    }
+
+    return stored;
+
 }
 
 
@@ -480,9 +472,8 @@ item *items_management::item_alloc(char *key, size_t nkey, int flags, int nbytes
 
 item *items_management::item_get(const char *key, const size_t nkey) {
     item *it;
-    uint32_t hv;
+    uint32_t hv = hash::hash_function(key, nkey);
 
-    hv = hash::hash_function(key, nkey);
     this->item_lock(hv);
     it = this->do_item_get(key, nkey, hv);
     this->item_unlock(hv);
@@ -528,5 +519,16 @@ void items_management::item_update(item *item) {
     this->item_lock(hv);
     this->do_item_update(item);
     this->item_unlock(hv);
+}
+
+int items_management::store_item(item *item) {
+    int ret;
+    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+
+    this->item_lock(hv);
+    ret = this->do_store_item(item, hv);
+    this->item_unlock(hv);
+
+    return ret;
 }
 
