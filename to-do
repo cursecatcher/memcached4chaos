@@ -29,6 +29,8 @@ le parti hanno al momento valori di default
 11. Inizializzare settings (extern)
 12. Inizializzare assoc_array::slabbing
 13. Fare classe per statistiche (ma anche no?)
-14. Rendere slab_rebalance_signal accessibile all'esterno della classe
+14. Rendere slab_rebalance_signal accessibile all'esterno della classe (OK)
 15. Togliere i getter in slabs.cpp e rendere slab_allocator e items_management "amiche"
 16. Atomics? 
+17. store item
+18. in do_store_item (items.cpp): verificare che sia do_item_link invece di item_link
