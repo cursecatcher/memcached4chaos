@@ -39,6 +39,9 @@ private:
 public:
     assoc_array(const int hashpower_init);
 
+    /**misura temporanea, sostituire con shtorie friend**/
+    unsigned int get_hashpower() { return this->hashpower; }
+
 //        void assoc_init(const int hashpower_init);
     item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
     int assoc_insert(item *it, const uint32_t hv);
