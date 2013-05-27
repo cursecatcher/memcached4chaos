@@ -2,7 +2,6 @@
 #include "assoc.hpp"
 
 #define LARGEST_ID POWER_LARGEST
-#define hashpower 1 /*** eia, fidati ***/
 
 class items_management {
     slab_allocator *slabbing;
@@ -12,7 +11,7 @@ class items_management {
     pthread_mutex_t atomics_mutex; /// INIT
     #endif
     pthread_mutex_t init_lock;
-    pthread_cond_t init_cond
+    pthread_cond_t init_cond;
 
     pthread_mutex_t *item_locks;
     uint32_t item_lock_count; /* size of the item lock hash table */
@@ -32,7 +31,7 @@ class items_management {
     void item_unlink_q(item *it);
 
 public:
-    items_management();
+    items_management(int nthreads);
 
     inline uint64_t get_cas_id(void) {
         static uint64_t cas_id = 0;

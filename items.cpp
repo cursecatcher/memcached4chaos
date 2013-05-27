@@ -1,6 +1,6 @@
 #include "items.hpp"
 
-items_management::items_management() {
+items_management::items_management(int nthreads) {
     // mutex
     #if !defined(HAVE_GCC_ATOMICS) && !defined(__sun)
     pthread_mutex_init(&this->atomics_mutex, NULL);
@@ -81,7 +81,7 @@ void items_management::item_lock(uint32_t hv) {
 
 //    if (likely(*lock_type == ITEM_LOCK_GRANULAR))
     if (*lock_type == ITEM_LOCK_GRANULAR)
-        mutex_lock(&this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count]);
+        mutex_lock(&this->item_locks[(hv & hashmask(this->associative->get_hashpower())) % this->item_lock_count]);
     else
         mutex_lock(&this->item_global_lock);
 }
@@ -91,14 +91,14 @@ void items_management::item_unlock(uint32_t hv) {
 
 //    if (likely(*lock_type == ITEM_LOCK_GRANULAR))
     if (*lock_type == ITEM_LOCK_GRANULAR)
-        mutex_unlock(&this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count]);
+        mutex_unlock(&this->item_locks[(hv & hashmask(this->associative->get_hashpower())) % this->item_lock_count]);
     else
         mutex_unlock(&this->item_global_lock);
 }
 
 void *items_management::item_trylock(uint32_t hv) {
     pthread_mutex_t *lock =
-        &this->item_locks[(hv & hashmask(hashpower)) % this->item_lock_count];
+        &this->item_locks[(hv & hashmask(this->associative->get_hashpower())) % this->item_lock_count];
 
     return (pthread_mutex_trylock(lock) == 0 ? lock : NULL);
 }
