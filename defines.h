@@ -30,17 +30,17 @@ typedef unsigned char   ub1; /* unsigned 1-byte quantities */
     } \
 }
 
-#define ITEM_key(item) (((char*)&((item)->data)) \
+#define ITEM_key(item)  (((char*)&((item)->data)) \
          + (((item)->it_flags & ITEM_CAS) ? sizeof(uint64_t) : 0))
 
-#define ITEM_suffix(item) ((char*) &((item)->data) + (item)->nkey + 1 \
+#define ITEM_suffix(item)   ((char*) &((item)->data) + (item)->nkey + 1 \
          + (((item)->it_flags & ITEM_CAS) ? sizeof(uint64_t) : 0))
 
 #define ITEM_data(item) ((char*) &((item)->data) + (item)->nkey + 1 \
          + (item)->nsuffix \
          + (((item)->it_flags & ITEM_CAS) ? sizeof(uint64_t) : 0))
 
-#define ITEM_ntotal(item) (sizeof(struct _stritem) + (item)->nkey + 1 \
+#define ITEM_ntotal(item)   (sizeof(struct _stritem) + (item)->nkey + 1 \
          + (item)->nsuffix + (item)->nbytes \
          + (((item)->it_flags & ITEM_CAS) ? sizeof(uint64_t) : 0))
 
@@ -70,13 +70,12 @@ typedef struct _stritem {
     /* then data with terminating \r\n (no terminating null; it's binary!) */
 } item;
 
+#define mutex_unlock(x) pthread_mutex_unlock(x)
 #define item_lock_global() (0)
 #define item_unlock_global() (0)
-#define mutex_lock(x) (0)
-#define mutex_unlock(x) (0)
 #define switch_item_lock_type(t) (0)
 #define ITEM_LOCK_GLOBAL 0
-#define ITEM_LOCK_GRANULAR 0
+#define ITEM_LOCK_GRANULAR 1
 
 struct settings {
     size_t maxbytes;
