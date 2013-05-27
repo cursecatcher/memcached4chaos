@@ -8,9 +8,15 @@ class items_management {
     slab_allocator *slabbing;
     assoc_array *associative;
 
+    #if !defined(HAVE_GCC_ATOMICS) && !defined(__sun)
+    pthread_mutex_t atomics_mutex; /// INIT
+    #endif
+    pthread_mutex_t init_lock;
+    pthread_cond_t init_cond
+
     pthread_mutex_t *item_locks;
-    /* size of the item lock hash table */
-    uint32_t item_lock_count;
+    uint32_t item_lock_count; /* size of the item lock hash table */
+
     /* this lock is temporarily engaged during a hash table expansion */
     pthread_mutex_t item_global_lock;
     /* thread-specific variable for deeply finding the item lock type */
@@ -22,7 +28,6 @@ class items_management {
 
     size_t item_make_header(const uint8_t nkey, const int flags,
                              const int nbytes, char *suffix, uint8_t *nsuffix);
-
     void item_link_q(item *it);
     void item_unlink_q(item *it);
 

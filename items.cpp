@@ -1,7 +1,43 @@
 #include "items.hpp"
 
 items_management::items_management() {
+    // mutex
+    #if !defined(HAVE_GCC_ATOMICS) && !defined(__sun)
+    pthread_mutex_init(&this->atomics_mutex, NULL);
+    #endif
+    /**
+     * cache lock
+     * **/
+    pthread_mutex_init(&this->init_lock, NULL);
+    pthread_cond_init(&this->init_cond, NULL);
 
+    pthread_mutex_init(&this->item_global_lock, NULL);
+    pthread_key_create(&this->item_lock_type_key, NULL);
+
+    int power;
+
+    /* Want a wide lock table, but don't waste memory */
+    if (nthreads < 3)
+        power = 10;
+    else if (nthreads < 4)
+        power = 11;
+    else if (nthreads < 5)
+        power = 12;
+    else
+        power = 13; /* 8192 buckets, and central locks don't scale much past 5 threads */
+
+    this->item_lock_count = hashsize(power); ///definire power
+    this->item_locks = (pthread_mutex_t *) calloc(item_lock_count, sizeof(pthread_mutex_t));
+
+    if (!this->item_locks) {
+        std::cerr << "Can't allocate item locks" << std::endl;
+        exit(0); /// MEMORY (EPIC) FAIL
+    }
+
+    for (int i = 0; i < this->item_lock_count; i++)
+        pthread_mutex_init(&this->item_locks[i], NULL);
+
+    /* inizializzare threads */
 }
 
 unsigned short items_management::refcount_incr(unsigned short *refcount) {
@@ -11,10 +47,10 @@ unsigned short items_management::refcount_incr(unsigned short *refcount) {
     return atomic_inc_ushort_nv(refcount);
 #else
     unsigned short res;
-    mutex_lock(&atomics_mutex);
+    mutex_lock(&this->atomics_mutex);
     (*refcount)++;
     res = *refcount;
-    mutex_unlock(&atomics_mutex);
+    mutex_unlock(&this->atomics_mutex);
     return res;
 #endif
 }
@@ -26,10 +62,10 @@ unsigned short items_management::refcount_decr(unsigned short *refcount) {
     return atomic_dec_ushort_nv(refcount);
 #else
     unsigned short res;
-    mutex_lock(&atomics_mutex);
+    mutex_lock(&this->atomics_mutex);
     (*refcount)--;
     res = *refcount;
-    mutex_unlock(&atomics_mutex);
+    mutex_unlock(&this->atomics_mutex);
     return res;
 #endif
 }
