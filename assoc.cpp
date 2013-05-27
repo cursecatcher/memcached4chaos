@@ -18,17 +18,10 @@ assoc_array::assoc_array(const int hashpower_init) {
 
     this->primary_hashtable = (item **) calloc(hashsize(this->hashpower), sizeof(void *));
 
-    if (! this->primary_hashtable) {
+    if (! this->primary_hashtable) { /// VERBOSE
         std::cerr << "Failed to init hashtable." << std::endl;
         exit(EXIT_FAILURE);
     }
-/// STATS
-/*
-    STATS_LOCK();
-    stats.hash_power_level = hashpower;
-    stats.hash_bytes = hashsize(hashpower) * sizeof(void *);
-    STATS_UNLOCK();
-*/
 }
 
 /*
@@ -58,18 +51,14 @@ item* assoc_array::assoc_find(const char *key, const size_t nkey, const uint32_t
     else
         it = this->primary_hashtable[hv & hashmask(this->hashpower)];
 
-//    int depth = 0; /// TRACE
-
     while (it) {
         if ((nkey == it->nkey) && (memcmp(key, ITEM_key(it), nkey) == 0)) {
             ret = it;
             break;
         }
         it = it->h_next;
-//        ++depth; /// TRACE
     }
 
-//    MEMCACHED_ASSOC_FIND(key, nkey, depth); /// TRACE
     return ret;
 }
 
@@ -92,7 +81,6 @@ int assoc_array::assoc_insert(item *it, const uint32_t hv) {
         this->assoc_start_expand();
     }
 
-//    MEMCACHED_ASSOC_INSERT(ITEM_key(it), it->nkey, hash_items); /// TRACE
     return 1;
 }
 
@@ -104,7 +92,6 @@ void assoc_array::assoc_delete(const char *key, const size_t nkey, const uint32_
         hash_items--;
 /* The DTrace probe cannot be triggered as the last instruction
  * due to possible tail-optimization by the compiler */
-//        MEMCACHED_ASSOC_DELETE(key, nkey, hash_items); /// TRACE
         nxt = (*before)->h_next;
         (*before)->h_next = NULL;   /* probably pointless, but whatever. */
         *before = nxt;
@@ -119,15 +106,13 @@ item** assoc_array::_hashitem_before (const char *key, const size_t nkey, const 
     item **pos;
     unsigned int oldbucket;
 
-    if (this->expanding && (oldbucket = (hv & hashmask(this->hashpower - 1))) >= this->expand_bucket) {
+    if (this->expanding && (oldbucket = (hv & hashmask(this->hashpower - 1))) >= this->expand_bucket)
         pos = &this->old_hashtable[oldbucket];
-    } else {
+    else
         pos = &this->primary_hashtable[hv & hashmask(this->hashpower)];
-    }
 
-    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, ITEM_key(*pos), nkey))) {
+    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, ITEM_key(*pos), nkey)))
         pos = &(*pos)->h_next;
-    }
 
     return pos;
 }
@@ -137,19 +122,13 @@ void assoc_array::assoc_expand(void) {
 
     this->primary_hashtable = (item **) calloc(hashsize(this->hashpower + 1), sizeof(void *));
     if (this->primary_hashtable) {
-/// SETTINGS
-      if (settings.verbose > 1)
+      if (settings.verbose > 1) /// VERBOSE
             std::cerr << "Hash table expansion starting." << std::endl;
         this->hashpower++;
         this->expanding = true;
         this->expand_bucket = 0;
-/// STATS
-/*      STATS_LOCK();
-        stats.hash_power_level = hashpower;
-        stats.hash_bytes += hashsize(hashpower) * sizeof(void *);
-        stats.hash_is_expanding = 1;
-        STATS_UNLOCK(); */
-    } else {
+    }
+    else {
         this->primary_hashtable = this->old_hashtable;
         /* Bad news, but we can keep running. */
     }
@@ -174,6 +153,7 @@ int assoc_array::start_assoc_maintenance_thread(void) {
             this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
         }
     }
+    /// VERBOSE
     if ((ret = pthread_create(&this->maintenance_tid, NULL, assoc_maintenance_thread, (void*) this)) != 0) {
         std::cerr << "Can't create thread: " << strerror(ret) << std::endl;;
         return -1;
@@ -214,7 +194,7 @@ void* assoc_array::_assoc_maintenance_thread(void) {
             for (it = this->old_hashtable[this->expand_bucket]; NULL != it; it = next) {
                 next = it->h_next;
 
-                bucket = hash::hash_function(ITEM_key(it), it->nkey) & hashmask(this->hashpower);
+                bucket = hash(ITEM_key(it), it->nkey) & hashmask(this->hashpower);
                 it->h_next = this->primary_hashtable[bucket];
                 this->primary_hashtable[bucket] = it;
             }
@@ -226,12 +206,7 @@ void* assoc_array::_assoc_maintenance_thread(void) {
                 this->expanding = false;
                 free(this->old_hashtable);
 
-/*             STATS_LOCK(); /// STATS
-                stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
-                stats.hash_is_expanding = 0;
-                STATS_UNLOCK(); */
-/// SETTINGS
-                if (settings.verbose > 1)
+                if (settings.verbose > 1) /// VERBOSE
                     std::cerr << "Hash table expansion done" << std::endl;
             }
         }

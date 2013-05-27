@@ -34,6 +34,11 @@ unsigned short items_management::refcount_decr(unsigned short *refcount) {
 #endif
 }
 
+int mutex_lock(pthread_mutex_t *lock) {
+    while (pthread_mutex_trylock(lock));
+    return 0;
+}
+
 
 void items_management::item_lock(uint32_t hv) {
     uint8_t *lock_type = (uint8_t *) pthread_getspecific(this->item_lock_type_key);
@@ -177,7 +182,7 @@ item *items_management::
     /* We walk up *only* for locked items. Never searching for expired.
      * Waste of CPU for almost all deployments */
     for (; tries > 0 && search != NULL; tries--, search=search->prev) {
-        uint32_t hv = hash::hash_function(ITEM_key(search), search->nkey, 0);
+        uint32_t hv = hash(ITEM_key(search), search->nkey);
         /* Attempt to hash item lock the "search" item. If locked, no
          * other callers can incr the refcount
          */
@@ -191,7 +196,6 @@ item *items_management::
              * it in years, but we leave this code in to prevent failures
              * just in case */
             if (search->time + TAIL_REPAIR_TIME < current_time) {
-                itemstats[id].tailrepairs++;
                 search->refcount = 1;
                 this->do_item_unlink_nolock(search, hv);
             }
@@ -204,11 +208,6 @@ item *items_management::
         if ((search->exptime != 0 && search->exptime < current_time)
             || (search->time <= oldest_live && oldest_live <= current_time)) {
 
-            itemstats[id].reclaimed++;
-
-            if ((search->it_flags & ITEM_FETCHED) == 0)
-                itemstats[id].expired_unfetched++;
-
             it = search;
             this->slabbing->slabs_adjust_mem_requested(it->slabs_clsid, ITEM_ntotal(it), ntotal); /// SLABS
             this->do_item_unlink_nolock(it, hv);
@@ -217,17 +216,8 @@ item *items_management::
         }
         else if ((it = (item*) this->slabbing->slabs_alloc(ntotal, id)) == NULL) { /// SLABS
             tried_alloc = 1;
-            if (settings.evict_to_free == 0) {
-                itemstats[id].outofmemory++;
-            } else {
-                itemstats[id].evicted++;
-                itemstats[id].evicted_time = current_time - search->time;
 
-                if (search->exptime != 0)
-                    itemstats[id].evicted_nonzero++;
-                if ((search->it_flags & ITEM_FETCHED) == 0)
-                    itemstats[id].evicted_unfetched++;
-
+            if (settings.evict_to_free != 0) {
                 it = search;
                 this->slabbing->slabs_adjust_mem_requested(it->slabs_clsid, ITEM_ntotal(it), ntotal); /// STATS
                 this->do_item_unlink_nolock(it, hv);
@@ -257,7 +247,6 @@ item *items_management::
         it = (item*) this->slabbing->slabs_alloc(ntotal, id); /// SLABS
 
     if (it == NULL) {
-        itemstats[id].outofmemory++;
         mutex_unlock(&cache_lock);
         return NULL;
     }
@@ -273,7 +262,6 @@ item *items_management::
     it->next = it->prev = it->h_next = 0;
     it->slabs_clsid = id;
 
-//    DEBUG_REFCNT(it, '*'); /// DEBUG
     it->it_flags = settings.use_cas ? ITEM_CAS : 0; /// SETTINGS
     it->nkey = nkey;
     it->nbytes = nbytes;
@@ -297,7 +285,6 @@ void items_management::item_free(item *it) {
     /* so slab size changer can tell later if item is already free or not */
     clsid = it->slabs_clsid;
     it->slabs_clsid = 0;
-//    DEBUG_REFCNT(it, 'F'); /// DEBUG
     this->slabbing->slabs_free(it, ntotal, clsid);
 }
 
@@ -458,7 +445,6 @@ int items_management::do_store_item(item *it, const uint32_t hv) {
     }
 
     return stored;
-
 }
 
 
@@ -472,7 +458,7 @@ item *items_management::item_alloc(char *key, size_t nkey, int flags, int nbytes
 
 item *items_management::item_get(const char *key, const size_t nkey) {
     item *it;
-    uint32_t hv = hash::hash_function(key, nkey);
+    uint32_t hv = hash(key, nkey);
 
     this->item_lock(hv);
     it = this->do_item_get(key, nkey, hv);
@@ -483,7 +469,7 @@ item *items_management::item_get(const char *key, const size_t nkey) {
 
 void items_management::item_remove(item *item) {
     uint32_t hv;
-    hv = hash::hash_function(ITEM_key(item), item->nkey);
+    hv = hash(ITEM_key(item), item->nkey);
 
     this->item_lock(hv);
     this->do_item_remove(item);
@@ -496,7 +482,7 @@ int items_management::item_replace(item *old_it, item *new_it, const uint32_t hv
 
 int items_management::item_link(item *item) {
     int ret;
-    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+    uint32_t hv = hash(ITEM_key(item), item->nkey);
 
     this->item_lock(hv);
     ret = this->do_item_link(item, hv);
@@ -506,7 +492,7 @@ int items_management::item_link(item *item) {
 }
 
 void items_management::item_unlink(item *item) {
-    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+    uint32_t hv = hash(ITEM_key(item), item->nkey);
 
     this->item_lock(hv);
     this->do_item_unlink(item, hv);
@@ -514,7 +500,7 @@ void items_management::item_unlink(item *item) {
 }
 
 void items_management::item_update(item *item) {
-    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+    uint32_t hv = hash(ITEM_key(item), item->nkey);
 
     this->item_lock(hv);
     this->do_item_update(item);
@@ -523,7 +509,7 @@ void items_management::item_update(item *item) {
 
 int items_management::store_item(item *item) {
     int ret;
-    uint32_t hv = hash::hash_function(ITEM_key(item), item->nkey);
+    uint32_t hv = hash(ITEM_key(item), item->nkey);
 
     this->item_lock(hv);
     ret = this->do_store_item(item, hv);

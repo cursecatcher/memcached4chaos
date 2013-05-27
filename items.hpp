@@ -20,8 +20,6 @@ class items_management {
     item *tails[LARGEST_ID];
     unsigned int sizes[LARGEST_ID];
 
-
-
     size_t item_make_header(const uint8_t nkey, const int flags,
                              const int nbytes, char *suffix, uint8_t *nsuffix);
 
@@ -39,6 +37,8 @@ public:
     unsigned short refcount_incr(unsigned short *refcount);
     unsigned short refcount_decr(unsigned short *refcount);
 
+
+    int mutex_lock(pthread_mutex_t *lock);
     void item_lock(uint32_t hv);
     void item_unlock(uint32_t hv);
     void *item_trylock(uint32_t hv);

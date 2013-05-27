@@ -28,7 +28,7 @@ slab_allocator::slab_allocator
         if (this->mem_base != NULL) {
             this->mem_current = this->mem_base;
             this->mem_avail = this->mem_limit;
-        } else {
+        } else { /// VERBOSE
             std::cerr << "Warning: Failed to allocate requested memory in one large chunk." << std::endl;
             std::cerr << "Will allocate in smaller chunks." << std::endl;
         }
@@ -45,7 +45,7 @@ slab_allocator::slab_allocator
         this->slabclass[i].perslab = settings.item_size_max / this->slabclass[i].size; /// SETTINGS
         size *= factor;
         /// SETTINGS
-        if (settings.verbose > 1) {
+        if (settings.verbose > 1) { /// VERBOSE
             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
                     i, slabclass[i].size, slabclass[i].perslab);
         }
@@ -55,7 +55,7 @@ slab_allocator::slab_allocator
     this->slabclass[this->power_largest].size = settings.item_size_max; /// SETTINGS
     this->slabclass[this->power_largest].perslab = 1;
     /// SETTINGS
-    if (settings.verbose > 1) {
+    if (settings.verbose > 1) { /// VERBOSE
         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
                 i, slabclass[i].size, slabclass[i].perslab);
     }
@@ -112,7 +112,6 @@ int slab_allocator::do_slabs_newslab(const unsigned int id) {
         (this->grow_slab_list(id) == 0) ||
         ((ptr = (char*) this->memory_allocate((size_t) len)) == 0)) {
 
-//        MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id); /// TRACE
         return 0;
     }
 
@@ -121,7 +120,6 @@ int slab_allocator::do_slabs_newslab(const unsigned int id) {
 
     p->slab_list[p->slabs++] = ptr;
     this->mem_malloced += len;
-//    MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id); /// TRACE
 
     return 1;
 }
@@ -132,7 +130,6 @@ void *slab_allocator::do_slabs_alloc(const size_t size, unsigned int id) {
     item *it = NULL;
 
     if (id < POWER_SMALLEST || id > this->power_largest) {
-//        MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0); /// TRACE
         return NULL;
     }
 
@@ -156,13 +153,6 @@ void *slab_allocator::do_slabs_alloc(const size_t size, unsigned int id) {
 
     if (ret)
         p->requested += size;
-/*
-    if (ret) { /// TRACE
-        p->requested += size;
-        MEMCACHED_SLABS_ALLOCATE(size, id, p->size, ret); /// TRACE
-    } else {
-        MEMCACHED_SLABS_ALLOCATE_FAILED(size, id); /// TRACE
-    } */
 
     return ret;
 }
@@ -177,7 +167,6 @@ void slab_allocator::do_slabs_free(void *ptr, const size_t size, unsigned int id
     if (id < POWER_SMALLEST || id > this->power_largest)
         return;
 
-//    MEMCACHED_SLABS_FREE(size, id, ptr); /// TRACE
     p = &this->slabclass[id];
 
     it = (item *)ptr;
@@ -448,7 +437,7 @@ int slab_allocator::start_slab_maintenance_thread(void) {
         }
     }
 
-    if (pthread_cond_init(&this->slab_rebalance_cond, NULL) != 0) {
+    if (pthread_cond_init(&this->slab_rebalance_cond, NULL) != 0) { /// VERBOSE
         std::cerr << "Can't initialize rebalance condition" << std::endl;
         return -1;
     }
@@ -456,12 +445,12 @@ int slab_allocator::start_slab_maintenance_thread(void) {
     pthread_mutex_init(&this->slabs_rebalance_lock, NULL);
 
     if ((ret = pthread_create(&this->maintenance_tid, NULL,
-                              slab_maintenance_thread, (void*) this)) != 0) {
+                              slab_maintenance_thread, (void*) this)) != 0) { /// VERBOSE
         std::cerr << "Can't reate slab maintenance thread: " << strerror(ret) << std::cerr;
         return -1;
     }
     if ((ret = pthread_create(&this->rebalance_tid, NULL,
-                              slab_rebalance_thread, (void*) this)) != 0) {
+                              slab_rebalance_thread, (void*) this)) != 0) { /// VERBOSE
         std::cerr << "Can't create rebalance thread: " << strerror(ret) << std::endl;
         return -1;
     }
@@ -532,16 +521,11 @@ int slab_allocator::slab_rebalance_start(void) {
     this->slab_rebalance_signal = 2;
 
     /// SETTINGS
-    if (settings.verbose > 1)
+    if (settings.verbose > 1) /// VERBOSE
         std::cerr << "Started a slab rebalance" << std::endl;
 
     pthread_mutex_unlock(&this->slabs_lock);
     pthread_mutex_unlock(&cache_lock);
-
-/// STATS
-/*    STATS_LOCK();
-    stats.slab_reassign_running = true;
-    STATS_UNLOCK(); */
 
     return 0;
 }
@@ -563,7 +547,8 @@ int slab_allocator::slab_rebalance_move(void) {
         status = MOVE_PASS;
         if (it->slabs_clsid != 255) {
             void *hold_lock = NULL;
-            uint32_t hv = hash::hash_function(ITEM_key(it), it->nkey);
+            uint32_t hv = hash(ITEM_key(it), it->nkey);
+
             if ((hold_lock = item_trylock(hv)) == NULL) {
                 status = MOVE_LOCKED;
             } else {
@@ -584,7 +569,7 @@ int slab_allocator::slab_rebalance_move(void) {
                 }
                 else if (refcount == 2) { /* item is linked but not busy */
                     if ((it->it_flags & ITEM_LINKED) != 0) {
-                        do_item_unlink_nolock(it, hash::hash_function(ITEM_key(it), it->nkey));
+                        do_item_unlink_nolock(it, hash(ITEM_key(it), it->nkey));
                         status = MOVE_DONE;
                     } else {
                         /* refcount == 1 + !ITEM_LINKED means the item is being
@@ -594,7 +579,7 @@ int slab_allocator::slab_rebalance_move(void) {
                     }
                 } else {
                     /// SETTINGS
-                    if (settings.verbose > 2) {
+                    if (settings.verbose > 2) { /// VERBOSE
                         fprintf(stderr, "Slab reassign hit a busy item: refcount: %d (%d -> %d)\n",
                             it->refcount, slab_rebal.s_clsid, slab_rebal.d_clsid);
                     }
@@ -680,7 +665,7 @@ int slab_allocator::slab_rebalance_finish(void) {
     stats.slabs_moved++;
     STATS_UNLOCK(); */
     /// SETTINGS
-    if (settings.verbose > 1)
+    if (settings.verbose > 1) /// VERBOSE
         std::cerr << "Finished a slab move" << std::endl;
 }
 

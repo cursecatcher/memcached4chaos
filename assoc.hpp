@@ -8,8 +8,6 @@
 #include "slabs.hpp"
 //#include "defines.h"
 
-using namespace hash;
-
 /* necessaria per la corrispondenza dei tipi in pthread_create */
 void* assoc_maintenance_thread(void *arg);
 

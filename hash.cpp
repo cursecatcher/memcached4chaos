@@ -1,6 +1,6 @@
 #include "hash.hpp"
 
-uint32_t hash_function(const void* key, size_t length, const uint32_t initval) {
+uint32_t hash(const void* key, size_t length, const uint32_t initval) {
     uint32_t a,b,c;
     union { const void *ptr; size_t i; } u;
 

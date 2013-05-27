@@ -125,7 +125,5 @@ and these came close:
 }
 
 
-uint32_t hash_function(const void* key,
-                       size_t length,
-                       const uint32_t initval = 0);
+uint32_t hash(const void* key, size_t length, const uint32_t initval = 0);
 
