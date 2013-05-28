@@ -34,3 +34,4 @@ le parti hanno al momento valori di default
 16. Atomics? 
 17. store item
 18. in do_store_item (items.cpp): verificare che sia do_item_link invece di item_link
+19. mutex_lock non deve essere interna alla classe
