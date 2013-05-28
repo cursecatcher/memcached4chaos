@@ -154,8 +154,6 @@ void items_management::item_link_q(item *it) { /* item is the new head */
         *tail = it;
 
     this->sizes[it->slabs_clsid]++;
-
-    return;
 }
 
 void items_management::item_unlink_q(item *it) {
@@ -184,8 +182,6 @@ void items_management::item_unlink_q(item *it) {
         it->prev->next = it->next;
 
     this->sizes[it->slabs_clsid]--;
-
-    return;
 }
 
 
@@ -206,7 +202,7 @@ item *items_management::
     if ((id = this->slabbing->slabs_clsid(ntotal)) == 0) /// SLABS
         return 0;
 
-    mutex_lock(&cache_lock);
+    this->mutex_lock(&cache_lock);
     /* do a quick check if we have any expired items in the tail.. */
     int tries = 5;
     int tried_alloc = 0;
@@ -226,8 +222,8 @@ item *items_management::
         if (hv != cur_hv && (hold_lock = item_trylock(hv)) == NULL)
             continue;
         /* Now see if the item is refcount locked */
-        if (refcount_incr(&search->refcount) != 2) { /// THREADS
-            refcount_decr(&search->refcount);
+        if (this->refcount_incr(&search->refcount) != 2) { /// THREADS
+            this->refcount_decr(&search->refcount);
             /* Old rare bug could cause a refcount leak. We haven't seen
              * it in years, but we leave this code in to prevent failures
              * just in case */
@@ -236,7 +232,7 @@ item *items_management::
                 this->do_item_unlink_nolock(search, hv);
             }
             if (hold_lock)
-                item_trylock_unlock(hold_lock); /// THREADS
+                this->item_trylock_unlock(hold_lock); /// THREADS
             continue;
         }
 
@@ -272,10 +268,10 @@ item *items_management::
             }
         }
 
-        refcount_decr(&search->refcount); /// THREADS
+        this->refcount_decr(&search->refcount); /// THREADS
         /* If hash values were equal, we don't grab a second lock */
         if (hold_lock)
-            item_trylock_unlock(hold_lock); /// THREADS
+            this->item_trylock_unlock(hold_lock); /// THREADS
         break;
     }
 
@@ -339,7 +335,7 @@ bool items_management::
 /** may fail if transgresses limits */
 int items_management::do_item_link(item *it, const uint32_t hv) {
     assert((it->it_flags & (ITEM_LINKED|ITEM_SLABBED)) == 0);
-    mutex_lock(&cache_lock);
+    this->mutex_lock(&cache_lock);
 
     it->it_flags |= ITEM_LINKED;
     it->time = current_time;
@@ -349,21 +345,16 @@ int items_management::do_item_link(item *it, const uint32_t hv) {
 
     this->associative->assoc_insert(it, hv);
     this->item_link_q(it);
+    this->refcount_incr(&it->refcount);
 
-    refcount_incr(&it->refcount);
     mutex_unlock(&cache_lock);
 
     return 1;
 }
 
 void items_management::do_item_unlink(item *it, const uint32_t hv) {
-    mutex_lock(&cache_lock);
-    if ((it->it_flags & ITEM_LINKED) != 0) {
-        it->it_flags &= ~ITEM_LINKED;
-        this->associative->assoc_delete(ITEM_key(it), it->nkey, hv);
-        this->item_unlink_q(it);
-        this->do_item_remove(it);
-    }
+    this->mutex_lock(&cache_lock);
+    this->do_item_unlink_nolock(it, hv);
     mutex_unlock(&cache_lock);
 }
 
@@ -379,7 +370,7 @@ void items_management::do_item_unlink_nolock(item *it, const uint32_t hv) {
 void items_management::do_item_remove(item *it) {
     assert((it->it_flags & ITEM_SLABBED) == 0);
 
-    if (refcount_decr(&it->refcount) == 0)
+    if (this->refcount_decr(&it->refcount) == 0)
         this->item_free(it);
 }
 
@@ -387,8 +378,8 @@ void items_management::do_item_remove(item *it) {
 void items_management::do_item_update(item *it) {
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->it_flags & ITEM_SLABBED) == 0);
+        this->mutex_lock(&cache_lock);
 
-        mutex_lock(&cache_lock);
         if ((it->it_flags & ITEM_LINKED) != 0) {
             this->item_unlink_q(it);
             it->time = current_time;
@@ -410,7 +401,7 @@ item *items_management::
     item *it = this->associative->assoc_find(key, nkey, hv);
 
     if (it != NULL) {
-        refcount_incr(&it->refcount);
+        this->refcount_incr(&it->refcount);
         /* Optimization for slab reassignment. prevents popular items from
          * jamming in busy wait. Can only do this here to satisfy lock order
          * of item_lock, cache_lock, slabs_lock. */
@@ -424,9 +415,9 @@ item *items_management::
         }
     }
     //mutex_unlock(&cache_lock);
-    int was_found = 0;
+    int was_found = 0; /// VERBOSE
 
-    if (settings.verbose > 2) {
+    if (settings.verbose > 2) { /// VERBOSE
         if (it == NULL) {
             std::cerr << "> NOT FOUND " << key;
         } else {
@@ -445,7 +436,7 @@ item *items_management::
 
             it = NULL;
 
-            if (was_found)
+            if (was_found) /// VERBOSE
                 std::cerr << " -nuked by flush";
 
         } else if (it->exptime != 0 && it->exptime <= current_time) {
@@ -454,7 +445,7 @@ item *items_management::
 
             it = NULL;
 
-            if (was_found)
+            if (was_found) /// VERBOSE
                 std::cerr << " -nuked by expire";
 
         } else {
@@ -462,7 +453,7 @@ item *items_management::
         }
     }
 
-    if (settings.verbose > 2)
+    if (settings.verbose > 2) /// VERBOSE
         std::cerr << std::endl;
 
     return it;
