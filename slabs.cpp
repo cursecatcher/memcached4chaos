@@ -95,7 +95,7 @@ int slab_allocator::grow_slab_list(const unsigned int id) {
 void slab_allocator::split_slab_page_into_freelist(char *ptr, const unsigned int id) {
     slabclass_t *p = &this->slabclass[id];
 
-    for (int x = 0; x < p->perslab; x++) {
+    for (int x = 0; x < (int) p->perslab; x++) {
         this->do_slabs_free(ptr, 0, id);
         ptr += p->size;
     }
@@ -129,7 +129,7 @@ void *slab_allocator::do_slabs_alloc(const size_t size, unsigned int id) {
     void *ret = NULL;
     item *it = NULL;
 
-    if (id < POWER_SMALLEST || id > this->power_largest) {
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest) {
         return NULL;
     }
 
@@ -162,9 +162,9 @@ void slab_allocator::do_slabs_free(void *ptr, const size_t size, unsigned int id
     item *it;
 
     assert(((item *)ptr)->slabs_clsid == 0);
-    assert(id >= POWER_SMALLEST && id <= this->power_largest);
+    assert(id >= POWER_SMALLEST && id <= (unsigned) this->power_largest);
 
-    if (id < POWER_SMALLEST || id > this->power_largest)
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest)
         return;
 
     p = &this->slabclass[id];
@@ -329,8 +329,8 @@ enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
 void slab_allocator::slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
     pthread_mutex_lock(&this->slabs_lock);
 
-    if (id < POWER_SMALLEST || id > this->power_largest) {
-        std::cerr << "Internal error! Invalid slab class" << std::endl;
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest) {
+        std::cerr << "Internal error! Invalid slab class" << std::endl; /// VERBOSE
         abort();
     }
 
