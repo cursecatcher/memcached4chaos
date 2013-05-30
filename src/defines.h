@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <stdint.h>
+#include "mutex.hpp"
 
 /* assoc */
 typedef unsigned long   ub4; /* unsigned 4-byte quantities */
@@ -70,13 +71,6 @@ typedef struct _stritem {
     /* then data with terminating \r\n (no terminating null; it's binary!) */
 } item;
 
-#define mutex_unlock(x) pthread_mutex_unlock(x)
-#define item_lock_global() (0)
-#define item_unlock_global() (0)
-#define switch_item_lock_type(t) (0)
-#define ITEM_LOCK_GLOBAL 0
-#define ITEM_LOCK_GRANULAR 1
-
 struct settings {
     size_t maxbytes;
     int maxconns;
@@ -111,6 +105,5 @@ struct settings {
 volatile rel_time_t current_time;
 
 //extern pthread_mutex_t cache_lock;
-extern mutex* cache_lock; 
 extern struct settings settings;
 
