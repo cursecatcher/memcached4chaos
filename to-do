@@ -28,10 +28,11 @@ le parti hanno al momento valori di default
 10. Inizializzare cache_lock (extern)
 11. Inizializzare settings (extern)
 12. Inizializzare assoc_array::slabbing
-13. Fare classe per statistiche (ma anche no?)
+13. Fare classe per statistiche (ma anche no?) (OK)
 14. Rendere slab_rebalance_signal accessibile all'esterno della classe (OK)
 15. Togliere i getter in slabs.cpp e rendere slab_allocator e items_management "amiche"
 16. Atomics? 
 17. store item
 18. in do_store_item (items.cpp): verificare che sia do_item_link invece di item_link
-19. mutex_lock non deve essere interna alla classe
+19. mutex_lock non deve essere interna alla classe (OK)
+20. risolvere i riferimenti in slab_rebalance_move

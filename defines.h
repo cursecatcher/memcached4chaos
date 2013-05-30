@@ -110,6 +110,7 @@ struct settings {
 
 volatile rel_time_t current_time;
 
-extern pthread_mutex_t cache_lock;
+//extern pthread_mutex_t cache_lock;
+extern mutex* cache_lock; 
 extern struct settings settings;
 
