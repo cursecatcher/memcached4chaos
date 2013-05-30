@@ -1,5 +1,7 @@
 #include "memslab.hpp"
 
+void memslab::switch_item_lock_type(enum item_lock_types type) {
+}
 
 /*** array associativo ***/
 item* memslab::assoc_find(const char *key, const size_t nkey, const uint32_t hv) {
@@ -132,14 +134,14 @@ int memslab::start_assoc_maintenance_thread(void) {
 
 void memslab::stop_assoc_maintenance_thread(void) {
 /// FIX
-//    mutex_lock(&cache_lock);
-    cache_lock->lock_trylock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock_trylock();
 
     this->do_run_maintenance_thread = 0;
     pthread_cond_signal(&this->assoc_maintenance_cond);
 /// FIX
-    cache_lock->unlock();
-//    pthread_mutex_unlock(&cache_lock);
+    this->cache_lock->unlock();
+//    pthread_mutex_unlock(&this->cache_lock);
 
     /* Wait for the maintenance thread to stop */
     pthread_join(this->assoc_maintenance_tid, NULL);
@@ -147,19 +149,20 @@ void memslab::stop_assoc_maintenance_thread(void) {
 
 void* memslab::_assoc_maintenance_thread(void) {
     while (this->do_run_maintenance_thread) {
-        int ii = 0;
+        int ii;
 
         /* Lock the cache, and bulk move multiple buckets to the new
          * hash table. */
-        item_lock_global();
-//        mutex_lock(&cache_lock);
-        cache_lock->lock();
+//        item_lock_global();
+//        mutex_lock(&this->cache_lock);
+        this->item_global_lock->lock();
+        this->cache_lock->lock();
 
         for (ii = 0; ii < this->hash_bulk_move && this->expanding; ++ii) {
             item *it, *next;
             int bucket;
 
-            for (it = this->old_hashtable[this->expand_bucket]; NULL != it; it = next) {
+            for (it = this->old_hashtable[this->expand_bucket]; it != NULL; it = next) {
                 next = it->h_next;
 
                 bucket = hash(ITEM_key(it), it->nkey) & hashmask(this->hashpower);
@@ -179,30 +182,31 @@ void* memslab::_assoc_maintenance_thread(void) {
             }
         }
 
-//        mutex_unlock(&cache_lock);
-        cache_lock->unlock();
-        item_unlock_global();
+//        mutex_unlock(&this->cache_lock);
+        this->cache_lock->unlock();
+        this->item_global_lock->unlock();
+//        item_unlock_global();
 
         if (!this->expanding) {
             /* finished expanding. tell all threads to use fine-grained locks */
-            switch_item_lock_type(ITEM_LOCK_GRANULAR);
+            this->switch_item_lock_type(ITEM_LOCK_GRANULAR);
             this->slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
-//            mutex_lock(&cache_lock);
-            cache_lock->lock();
+//            mutex_lock(&this->cache_lock);
+            this->cache_lock->lock();
             this->started_expanding = false;
-            cache_lock->cond_wait(&this->assoc_maintenance_cond);
- //           pthread_cond_wait(&this->assoc_maintenance_cond, &cache_lock);
+            this->cache_lock->cond_wait(&this->assoc_maintenance_cond);
+ //           pthread_cond_wait(&this->assoc_maintenance_cond, &this->cache_lock);
             /* Before doing anything, tell threads to use a global lock */
-//            mutex_unlock(&cache_lock);
-            cache_lock->unlock();
+//            mutex_unlock(&this->cache_lock);
+            this->cache_lock->unlock();
             this->slabs_rebalancer_pause();
-            switch_item_lock_type(ITEM_LOCK_GLOBAL);
-//            mutex_lock(&cache_lock);
-            cache_lock->lock();
+            this->switch_item_lock_type(ITEM_LOCK_GLOBAL);
+//            mutex_lock(&this->cache_lock);
+            this->cache_lock->lock();
             this->assoc_expand();
-            cache_lock->unlock();
-//            mutex_unlock(&cache_lock);
+            this->cache_lock->unlock();
+//            mutex_unlock(&this->cache_lock);
         }
     }
 
@@ -506,14 +510,14 @@ int memslab::slab_automove_decision(int *src, int *dst) {
     else
         return 0;
 
-//    mutex_lock(&cache_lock);
-    cache_lock->lock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock();
 
     for (i = POWER_SMALLEST; i < this->power_largest; i++)
         total_pages[i] = this->slabclass[i].slabs;
 
-    cache_lock->unlock();
-//    mutex_unlock(&cache_lock);
+    this->cache_lock->unlock();
+//    mutex_unlock(&this->cache_lock);
 
     /* Find a candidate source; something with zero evicts 3+ times */
     for (i = POWER_SMALLEST; i < this->power_largest; i++) {
@@ -607,13 +611,13 @@ int memslab::start_slab_maintenance_thread(void) {
 
 
 void memslab::stop_slab_maintenance_thread(void) {
-//    mutex_lock(&cache_lock);
-    cache_lock->lock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock();
     this->do_run_slab_thread = 0;
     this->do_run_slab_rebalance_thread = 0;
     pthread_cond_signal(&this->slab_maintenance_cond);
-    cache_lock->unlock();
-//    mutex_unlock(&cache_lock);
+    this->cache_lock->unlock();
+//    mutex_unlock(&this->cache_lock);
 
     /* Wait for the maintenance thread to stop */
     pthread_join(this->slab_maintenance_tid, NULL);
@@ -636,9 +640,9 @@ int memslab::slab_rebalance_start(void) {
     slabclass_t *s_cls;
     int no_go = 0;
 
-//    pthread_mutex_lock(&cache_lock);
+//    pthread_mutex_lock(&this->cache_lock);
 //    pthread_mutex_lock(&this->slabs_lock);
-    cache_lock->lock();
+    this->cache_lock->lock();
     this->slabs_lock->lock();
 
     if (this->slab_rebal.s_clsid < POWER_SMALLEST ||
@@ -659,9 +663,9 @@ int memslab::slab_rebalance_start(void) {
 
     if (no_go != 0) {
         this->slabs_lock->unlock();
-        cache_lock->unlock();
+        this->cache_lock->unlock();
 //        pthread_mutex_unlock(&this->slabs_lock);
-//        pthread_mutex_unlock(&cache_lock);
+//        pthread_mutex_unlock(&this->cache_lock);
         return no_go; /* Should use a wrapper function... */
     }
 
@@ -680,9 +684,9 @@ int memslab::slab_rebalance_start(void) {
         std::cerr << "Started a slab rebalance" << std::endl;
 
     this->slabs_lock->unlock();
-    cache_lock->unlock();
+    this->cache_lock->unlock();
 //    pthread_mutex_unlock(&this->slabs_lock);
-//    pthread_mutex_unlock(&cache_lock);
+//    pthread_mutex_unlock(&this->cache_lock);
 
     return 0;
 }
@@ -694,9 +698,9 @@ int memslab::slab_rebalance_move(void) {
     int refcount = 0;
     enum move_status status = MOVE_PASS;
 
-//    pthread_mutex_lock(&cache_lock);
+//    pthread_mutex_lock(&this->cache_lock);
 //    pthread_mutex_lock(&this->slabs_lock);
-    cache_lock->lock();
+    this->cache_lock->lock();
     this->slabs_lock->lock();
 
     s_cls = &this->slabclass[this->slab_rebal.s_clsid];
@@ -705,7 +709,7 @@ int memslab::slab_rebalance_move(void) {
         item *it = (item *) this->slab_rebal.slab_pos;
         status = MOVE_PASS;
         if (it->slabs_clsid != 255) {
-            void *hold_lock = NULL;
+            mutex *hold_lock = NULL;
             uint32_t hv = hash(ITEM_key(it), it->nkey);
 
             if ((hold_lock = item_trylock(hv)) == NULL) {
@@ -744,7 +748,8 @@ int memslab::slab_rebalance_move(void) {
                     }
                     status = MOVE_BUSY;
                 }
-                mutex_unlock((pthread_mutex_t *) hold_lock);
+                hold_lock->unlock();
+//                mutex_unlock((pthread_mutex_t *) hold_lock);
             }
         }
 
@@ -781,9 +786,9 @@ int memslab::slab_rebalance_move(void) {
     }
 
     this->slabs_lock->unlock();
-    cache_lock->unlock();
+    this->cache_lock->unlock();
 //    pthread_mutex_unlock(&this->slabs_lock);
-//    pthread_mutex_unlock(&cache_lock);
+//    pthread_mutex_unlock(&this->cache_lock);
 
     return was_busy;
 }
@@ -792,10 +797,10 @@ void memslab::slab_rebalance_finish(void) {
     slabclass_t *s_cls;
     slabclass_t *d_cls;
 
-//    pthread_mutex_lock(&cache_lock);
+//    pthread_mutex_lock(&this->cache_lock);
 //    pthread_mutex_lock(&this->slabs_lock);
-    cache_lock->lock();
-    this-slabs_lock->lock();
+    this->cache_lock->lock();
+    this->slabs_lock->lock();
 
     s_cls = &this->slabclass[this->slab_rebal.s_clsid];
     d_cls = &this->slabclass[this->slab_rebal.d_clsid];
@@ -821,9 +826,9 @@ void memslab::slab_rebalance_finish(void) {
     this->slab_rebalance_signal = 0;
 
 //    pthread_mutex_unlock(&this->slabs_lock);
-//    pthread_mutex_unlock(&cache_lock);
+//    pthread_mutex_unlock(&this->cache_lock);
     this->slabs_lock->unlock();
-    cache_lock->unlock();
+    this->cache_lock->unlock();
 
     /// SETTINGS
     if (settings.verbose > 1) /// VERBOSE
@@ -1032,8 +1037,8 @@ item *memslab::
     if ((id = this->slabs_clsid(ntotal)) == 0) /// SLABS
         return 0;
 
-//    mutex_lock(&cache_lock);
-    cache_lock->lock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock();
     /* do a quick check if we have any expired items in the tail.. */
     int tries = 5;
     int tried_alloc = 0;
@@ -1114,8 +1119,8 @@ item *memslab::
         it = (item*) this->slabs_alloc(ntotal, id); /// SLABS
 
     if (it == NULL) {
-        cache_lock->unlock();
-//        mutex_unlock(&cache_lock);
+        this->cache_lock->unlock();
+//        mutex_unlock(&this->cache_lock);
         return NULL;
     }
 
@@ -1126,8 +1131,8 @@ item *memslab::
      * been removed from the slab LRU.
      */
     it->refcount = 1;     /* the caller will have a reference */
-//    mutex_unlock(&cache_lock);
-    cache_lock->unlock();
+//    mutex_unlock(&this->cache_lock);
+    this->cache_lock->unlock();
     it->next = it->prev = it->h_next = 0;
     it->slabs_clsid = id;
 
@@ -1172,8 +1177,8 @@ bool memslab::
 /** may fail if transgresses limits */
 int memslab::do_item_link(item *it, const uint32_t hv) {
     assert((it->it_flags & (ITEM_LINKED|ITEM_SLABBED)) == 0);
-//    mutex_lock(&cache_lock);
-    cache_lock->lock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock();
 
     it->it_flags |= ITEM_LINKED;
     it->time = current_time;
@@ -1185,18 +1190,18 @@ int memslab::do_item_link(item *it, const uint32_t hv) {
     this->item_link_q(it);
     this->refcount_incr(&it->refcount);
 
-//    mutex_unlock(&cache_lock);
-    cache_lock->unlock();
+//    mutex_unlock(&this->cache_lock);
+    this->cache_lock->unlock();
 
     return 1;
 }
 
 void memslab::do_item_unlink(item *it, const uint32_t hv) {
-//    mutex_lock(&cache_lock);
-    cache_lock->lock();
+//    mutex_lock(&this->cache_lock);
+    this->cache_lock->lock();
     this->do_item_unlink_nolock(it, hv);
-    cache_lock->unlock();
-//    mutex_unlock(&cache_lock);
+    this->cache_lock->unlock();
+//    mutex_unlock(&this->cache_lock);
 }
 
 void memslab::do_item_unlink_nolock(item *it, const uint32_t hv) {
@@ -1220,15 +1225,15 @@ void memslab::do_item_update(item *it) {
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->it_flags & ITEM_SLABBED) == 0);
 
-//        mutex_lock(&cache_lock);
-        cache_lock->lock();
+//        mutex_lock(&this->cache_lock);
+        this->cache_lock->lock();
         if ((it->it_flags & ITEM_LINKED) != 0) {
             this->item_unlink_q(it);
             it->time = current_time;
             this->item_link_q(it);
         }
-        cache_lock->unlock();
-//        mutex_unlock(&cache_lock);
+        this->cache_lock->unlock();
+//        mutex_unlock(&this->cache_lock);
     }
 }
 
@@ -1240,14 +1245,14 @@ int memslab::do_item_replace(item *it, item *new_it, const uint32_t hv) {
 
 item *memslab::
     do_item_get(const char *key, const size_t nkey, const uint32_t hv) {
-    //mutex_lock(&cache_lock);
+    //mutex_lock(&this->cache_lock);
     item *it = this->assoc_find(key, nkey, hv);
 
     if (it != NULL) {
         this->refcount_incr(&it->refcount);
         /* Optimization for slab reassignment. prevents popular items from
          * jamming in busy wait. Can only do this here to satisfy lock order
-         * of item_lock, cache_lock, slabs_lock. */
+         * of item_lock, this->cache_lock, slabs_lock. */
         if (this->slab_rebalance_signal && /// SLABS
             ((void *)it >= this->slab_rebal.slab_start &&
             (void *)it < this->slab_rebal.slab_end)) {
@@ -1257,7 +1262,7 @@ item *memslab::
             it = NULL;
         }
     }
-    //mutex_unlock(&cache_lock);
+    //mutex_unlock(&this->cache_lock);
     int was_found = 0; /// VERBOSE
 
     if (settings.verbose > 2) { /// VERBOSE

@@ -6,7 +6,6 @@
 #include <pthread.h>
 
 #include "hash.hpp"
-#include "mutex.hpp"
 
 #include "defines.h"
 
@@ -19,6 +18,7 @@
 
 #define CHUNK_ALIGN_BYTES 1
 
+enum item_lock_types { ITEM_LOCK_GLOBAL = 0, ITEM_LOCK_GRANULAR };
 
 typedef struct {
     unsigned int size;      /* sizes of items */
@@ -62,6 +62,8 @@ void* assoc_maintenance_thread(void *arg);
 
 class memslab {
 public:
+    void switch_item_lock_type(enum item_lock_types type);
+
     /** associative array **/
     // void assoc_init(const int hashpower_init);
     item *assoc_find(const char *key, const size_t nkey, const uint32_t hv);
@@ -155,6 +157,7 @@ public:
     int store_item(item *item);
 
 private:
+    mutex *cache_lock;
     /****** associative array *******/
     int hash_bulk_move;
     volatile int do_run_maintenance_thread;
