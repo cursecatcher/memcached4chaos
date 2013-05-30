@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <iostream>
 
+#include "mutex.h"
 #include "slabs.hpp"
 //#include "defines.h"
 

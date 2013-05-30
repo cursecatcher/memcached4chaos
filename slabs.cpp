@@ -95,7 +95,7 @@ int slab_allocator::grow_slab_list(const unsigned int id) {
 void slab_allocator::split_slab_page_into_freelist(char *ptr, const unsigned int id) {
     slabclass_t *p = &this->slabclass[id];
 
-    for (int x = 0; x < p->perslab; x++) {
+    for (int x = 0; x < (int) p->perslab; x++) {
         this->do_slabs_free(ptr, 0, id);
         ptr += p->size;
     }
@@ -129,7 +129,7 @@ void *slab_allocator::do_slabs_alloc(const size_t size, unsigned int id) {
     void *ret = NULL;
     item *it = NULL;
 
-    if (id < POWER_SMALLEST || id > this->power_largest) {
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest) {
         return NULL;
     }
 
@@ -162,9 +162,9 @@ void slab_allocator::do_slabs_free(void *ptr, const size_t size, unsigned int id
     item *it;
 
     assert(((item *)ptr)->slabs_clsid == 0);
-    assert(id >= POWER_SMALLEST && id <= this->power_largest);
+    assert(id >= POWER_SMALLEST && id <= (unsigned) this->power_largest);
 
-    if (id < POWER_SMALLEST || id > this->power_largest)
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest)
         return;
 
     p = &this->slabclass[id];
@@ -272,7 +272,7 @@ void slab_allocator::slabs_preallocate (const unsigned int maxslabs) {
     for (i = POWER_SMALLEST; i <= POWER_LARGEST; i++) {
         if (++prealloc > maxslabs)
             return;
-        if (this->do_slabs_newslab(i) == 0) {
+        if (this->do_slabs_newslab(i) == 0) { /// VERBOSE
             std::cerr << "Error while preallocating slab memory!" << std::endl;
             std::cerr << "If using -L or other prealloc options, max memory must be ";
             std::cerr << "at least " << this->power_largest << " megabytes." << std::endl;
@@ -300,7 +300,7 @@ void* slab_allocator::slabs_alloc(size_t size, unsigned int id) {
     void *ret;
 
     pthread_mutex_lock(&this->slabs_lock);
-    ret = do_slabs_alloc(size, id);
+    ret = this->do_slabs_alloc(size, id);
     pthread_mutex_unlock(&this->slabs_lock);
 
     return ret;
@@ -308,7 +308,7 @@ void* slab_allocator::slabs_alloc(size_t size, unsigned int id) {
 
 void slab_allocator::slabs_free(void *ptr, size_t size, unsigned int id) {
     pthread_mutex_lock(&this->slabs_lock);
-    do_slabs_free(ptr, size, id);
+    this->do_slabs_free(ptr, size, id);
     pthread_mutex_unlock(&this->slabs_lock);
 }
 
@@ -319,7 +319,7 @@ enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
         ret = REASSIGN_RUNNING;
     }
     else {
-        ret = do_slabs_reassign(src, dst);
+        ret = this->do_slabs_reassign(src, dst);
         pthread_mutex_unlock(&this->slabs_rebalance_lock);
     }
 
@@ -329,15 +329,15 @@ enum reassign_result_type slab_allocator::slabs_reassign(int src, int dst) {
 void slab_allocator::slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
     pthread_mutex_lock(&this->slabs_lock);
 
-    if (id < POWER_SMALLEST || id > this->power_largest) {
-        std::cerr << "Internal error! Invalid slab class" << std::endl;
+    if (id < POWER_SMALLEST || id > (unsigned) this->power_largest) {
+        std::cerr << "Internal error! Invalid slab class" << std::endl; /// VERBOSE
         abort();
     }
 
     slabclass_t *p = &this->slabclass[id];
     p->requested = p->requested - old + ntotal;
 
-    pthread_mutex_unlock(&this->slabs_lock);
+    mutex_unlock(&this->slabs_lock);
 }
 
 int slab_allocator::slab_automove_decision(int *src, int *dst) {
@@ -361,13 +361,12 @@ int slab_allocator::slab_automove_decision(int *src, int *dst) {
     else
         return 0;
 
-//    item_stats_evictions(evicted_new); /// STATS ?
-    pthread_mutex_lock(&cache_lock);
+    mutex_lock(&cache_lock);
 
     for (i = POWER_SMALLEST; i < this->power_largest; i++)
         total_pages[i] = this->slabclass[i].slabs;
 
-    pthread_mutex_unlock(&cache_lock);
+    mutex_unlock(&cache_lock);
 
     /* Find a candidate source; something with zero evicts 3+ times */
     for (i = POWER_SMALLEST; i < this->power_largest; i++) {
@@ -464,7 +463,7 @@ void slab_allocator::stop_slab_maintenance_thread(void) {
     this->do_run_slab_thread = 0;
     this->do_run_slab_rebalance_thread = 0;
     pthread_cond_signal(&this->maintenance_cond);
-    pthread_mutex_unlock(&cache_lock);
+    mutex_unlock(&cache_lock);
 
     /* Wait for the maintenance thread to stop */
     pthread_join(this->maintenance_tid, NULL);
@@ -585,7 +584,7 @@ int slab_allocator::slab_rebalance_move(void) {
                     }
                     status = MOVE_BUSY;
                 }
-                item_trylock_unlock(hold_lock);
+                mutex_unlock((pthread_mutex_t *) hold_lock);
             }
         }
 
@@ -627,7 +626,7 @@ int slab_allocator::slab_rebalance_move(void) {
     return was_busy;
 }
 
-int slab_allocator::slab_rebalance_finish(void) {
+void slab_allocator::slab_rebalance_finish(void) {
     slabclass_t *s_cls;
     slabclass_t *d_cls;
 
@@ -660,10 +659,6 @@ int slab_allocator::slab_rebalance_finish(void) {
     pthread_mutex_unlock(&this->slabs_lock);
     pthread_mutex_unlock(&cache_lock);
 
-/*    STATS_LOCK(); /// STATS
-    stats.slab_reassign_running = false;
-    stats.slabs_moved++;
-    STATS_UNLOCK(); */
     /// SETTINGS
     if (settings.verbose > 1) /// VERBOSE
         std::cerr << "Finished a slab move" << std::endl;

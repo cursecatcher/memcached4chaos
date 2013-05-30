@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "assoc.hpp"
+#include "mutex.h"
 
 #define LARGEST_ID POWER_LARGEST
 
@@ -42,11 +43,9 @@ public:
     unsigned short refcount_decr(unsigned short *refcount);
 
 
-    int mutex_lock(pthread_mutex_t *lock);
     void item_lock(uint32_t hv);
     void item_unlock(uint32_t hv);
     void *item_trylock(uint32_t hv);
-    void item_trylock_unlock(void *lock);
 
     item *do_item_alloc(char *key, const size_t nkey, const int flags, const rel_time_t exptime, const int nbytes, const uint32_t cur_hv);
     void item_free(item *it);

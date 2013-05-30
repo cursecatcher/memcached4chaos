@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "hash.hpp"
+#include "mutex.h"
 
 #include "defines.h"
 
@@ -57,6 +58,7 @@ void *slab_rebalance_thread(void* arg);
 
 class slab_allocator {
 private:
+
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
     size_t mem_malloced;
@@ -141,7 +143,7 @@ public:
 
     int slab_rebalance_start(void);
     int slab_rebalance_move(void);
-    int slab_rebalance_finish(void);
+    void slab_rebalance_finish(void);
 
 /** Slab mover thread.
  * Sits waiting for a condition to jump off and shovel some memory about */

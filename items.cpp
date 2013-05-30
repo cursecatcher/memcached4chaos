@@ -34,7 +34,7 @@ items_management::items_management(int nthreads) {
         exit(0); /// MEMORY (EPIC) FAIL
     }
 
-    for (int i = 0; i < this->item_lock_count; i++)
+    for (int i = 0; i < (int) this->item_lock_count; i++)
         pthread_mutex_init(&this->item_locks[i], NULL);
 
     /* inizializzare threads */
@@ -70,11 +70,6 @@ unsigned short items_management::refcount_decr(unsigned short *refcount) {
 #endif
 }
 
-int mutex_lock(pthread_mutex_t *lock) {
-    while (pthread_mutex_trylock(lock));
-    return 0;
-}
-
 
 void items_management::item_lock(uint32_t hv) {
     uint8_t *lock_type = (uint8_t *) pthread_getspecific(this->item_lock_type_key);
@@ -102,12 +97,6 @@ void *items_management::item_trylock(uint32_t hv) {
 
     return (pthread_mutex_trylock(lock) == 0 ? lock : NULL);
 }
-
-void items_management::item_trylock_unlock(void *lock) {
-    pthread_mutex_unlock((pthread_mutex_t *) lock);
-}
-
-
 
 /**
  * Generates the variable-sized part of the header for an object.
@@ -202,7 +191,7 @@ item *items_management::
     if ((id = this->slabbing->slabs_clsid(ntotal)) == 0) /// SLABS
         return 0;
 
-    this->mutex_lock(&cache_lock);
+    mutex_lock(&cache_lock);
     /* do a quick check if we have any expired items in the tail.. */
     int tries = 5;
     int tried_alloc = 0;
@@ -216,8 +205,7 @@ item *items_management::
     for (; tries > 0 && search != NULL; tries--, search=search->prev) {
         uint32_t hv = hash(ITEM_key(search), search->nkey);
         /* Attempt to hash item lock the "search" item. If locked, no
-         * other callers can incr the refcount
-         */
+         * other callers can incr the refcount */
         /* FIXME: I think we need to mask the hv here for comparison? */
         if (hv != cur_hv && (hold_lock = item_trylock(hv)) == NULL)
             continue;
@@ -232,7 +220,8 @@ item *items_management::
                 this->do_item_unlink_nolock(search, hv);
             }
             if (hold_lock)
-                this->item_trylock_unlock(hold_lock); /// THREADS
+                mutex_unlock((pthread_mutex_t *) hold_lock);
+
             continue;
         }
 
@@ -271,7 +260,8 @@ item *items_management::
         this->refcount_decr(&search->refcount); /// THREADS
         /* If hash values were equal, we don't grab a second lock */
         if (hold_lock)
-            this->item_trylock_unlock(hold_lock); /// THREADS
+            mutex_unlock((pthread_mutex_t *) hold_lock);
+
         break;
     }
 
@@ -335,7 +325,7 @@ bool items_management::
 /** may fail if transgresses limits */
 int items_management::do_item_link(item *it, const uint32_t hv) {
     assert((it->it_flags & (ITEM_LINKED|ITEM_SLABBED)) == 0);
-    this->mutex_lock(&cache_lock);
+    mutex_lock(&cache_lock);
 
     it->it_flags |= ITEM_LINKED;
     it->time = current_time;
@@ -353,7 +343,7 @@ int items_management::do_item_link(item *it, const uint32_t hv) {
 }
 
 void items_management::do_item_unlink(item *it, const uint32_t hv) {
-    this->mutex_lock(&cache_lock);
+    mutex_lock(&cache_lock);
     this->do_item_unlink_nolock(it, hv);
     mutex_unlock(&cache_lock);
 }
@@ -378,8 +368,8 @@ void items_management::do_item_remove(item *it) {
 void items_management::do_item_update(item *it) {
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->it_flags & ITEM_SLABBED) == 0);
-        this->mutex_lock(&cache_lock);
 
+        mutex_lock(&cache_lock);
         if ((it->it_flags & ITEM_LINKED) != 0) {
             this->item_unlink_q(it);
             it->time = current_time;
