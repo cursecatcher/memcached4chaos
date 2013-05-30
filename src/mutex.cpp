@@ -1,4 +1,4 @@
-#include "mutex.h"
+#include "mutex.hpp"
 
 
 mutex::mutex() {
@@ -10,7 +10,8 @@ int mutex::lock() {
 }
 
 int mutex::lock_trylock() {
-    while (this->mutex_trylock())   ;
+    while (this->trylock())
+        ;
     return 0;
 }
 

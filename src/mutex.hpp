@@ -10,5 +10,5 @@ public:
     int cond_wait(pthread_cond_t *cond);
 
 private:
-    pthread_mutex_t *l;
+    pthread_mutex_t l;
 };
