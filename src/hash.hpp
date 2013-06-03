@@ -1,5 +1,5 @@
-#include <stdint.h>
 #include <cstddef>
+#include <stdint.h>
 
 /*
  * The hash function used here is by Bob Jenkins, 1996:
