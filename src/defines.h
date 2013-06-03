@@ -1,6 +1,5 @@
 #include <cstddef>
 #include <stdint.h>
-#include "mutex.hpp"
 
 /* assoc */
 typedef unsigned long   ub4; /* unsigned 4-byte quantities */
@@ -19,7 +18,7 @@ typedef unsigned char   ub1; /* unsigned 1-byte quantities */
 #define hashsize(n) ((ub4)1<<(n))
 #define hashmask(n) (hashsize(n)-1)
 
-#define DEFAULT_HASH_BULK_MOVE 1
+#define DEFAULT_HASH_BULK_MOVE 8
 
 /* warning: don't use these macros with a function, as it evals its arg twice */
 #define ITEM_get_cas(i) (((i)->it_flags & ITEM_CAS) ? \
@@ -102,8 +101,9 @@ struct settings {
     bool shutdown_command; /* allow shutdown command */
 };
 
-volatile rel_time_t current_time;
+/*
+extern volatile rel_time_t current_time;
 
 //extern pthread_mutex_t cache_lock;
 extern struct settings settings;
-
+*/
