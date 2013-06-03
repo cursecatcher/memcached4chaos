@@ -5,18 +5,21 @@
 #include <iostream>
 #include <pthread.h>
 
-#include "hash.hpp"
-
 #include "defines.h"
+#include "hash.hpp"
+#include "mutex.hpp"
 
-#define MAX_NUMBER_OF_SLAB_CLASSES 1
+#define MAX_NUMBER_OF_SLAB_CLASSES (POWER_LARGEST+1)
 #define DEFAULT_SLAB_BULK_CHECK 1
 
-#define LARGEST_ID 1
-#define POWER_LARGEST 1
+#define LARGEST_ID POWER_LARGEST
+#define POWER_LARGEST 200
 #define POWER_SMALLEST 1
 
-#define CHUNK_ALIGN_BYTES 1
+#define CHUNK_ALIGN_BYTES 8
+
+
+
 
 enum item_lock_types { ITEM_LOCK_GLOBAL = 0, ITEM_LOCK_GRANULAR };
 
@@ -62,6 +65,13 @@ void* assoc_maintenance_thread(void *arg);
 
 class memslab {
 public:
+    memslab(
+        const int hashpower_init,
+        int nthreads,
+        const size_t limit,
+        const double factor = 1.25,
+        const bool prealloc = false);
+
     void switch_item_lock_type(enum item_lock_types type);
 
     /** associative array **/

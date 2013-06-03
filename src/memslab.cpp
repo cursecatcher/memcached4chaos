@@ -1,6 +1,133 @@
 #include "memslab.hpp"
 
+
+volatile rel_time_t current_time;
+struct settings settings;
+
+memslab::memslab(
+    const int hashpower_init,
+    int nthreads,
+    const size_t limit, const double factor, const bool prealloc) {
+
+    /** globals */
+    this->cache_lock = new mutex();
+
+    /** associative array */
+    pthread_cond_init(&this->assoc_maintenance_cond, NULL);
+    this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
+    this->do_run_maintenance_thread = 1;
+
+    this->old_hashtable = NULL;
+    this->hash_items = 0;
+    this->expanding = this->started_expanding = false;
+    this->expand_bucket = 0;
+    this->hashpower =
+        hashpower_init > 0 ? hashpower_init : HASHPOWER_DEFAULT;
+    this->primary_hashtable =
+        (item **) calloc(hashsize(this->hashpower), sizeof(void *));
+
+    if (!this->primary_hashtable) {
+        std::cerr << "failed to init hashtable" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    /** slabbing */
+    this->slabs_lock = new mutex();
+    this->slabs_rebalance_lock = new mutex();
+
+    this->slab_bulk_check = DEFAULT_SLAB_BULK_CHECK;
+    this->mem_base = this->mem_current = NULL;
+    this->mem_limit = limit;
+    this->mem_malloced = 0;
+    this->mem_avail = 0;
+
+    if (prealloc) {
+        /* Allocate everything in a big chunk with malloc */
+        this->mem_base = malloc(this->mem_limit);
+        if (this->mem_base != NULL) {
+            this->mem_current = this->mem_base;
+            this->mem_avail = this->mem_limit;
+        } else { /// VERBOSE
+            std::cerr << "Warning: Failed to allocate requested memory in one large chunk." << std::endl;
+            std::cerr << "Will allocate in smaller chunks." << std::endl;
+        }
+    }
+
+    int i = POWER_SMALLEST - 1;
+    unsigned int size = sizeof(item) + settings.chunk_size; /// SETTINGS
+
+    memset(this->slabclass, 0, sizeof(this->slabclass));
+
+    while (++i < POWER_LARGEST && size <= settings.item_size_max / factor) { /// SETTINGS
+        /* Make sure items are always n-byte aligned */
+        if (size % CHUNK_ALIGN_BYTES)
+            size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
+
+        this->slabclass[i].size = size;
+        this->slabclass[i].perslab = settings.item_size_max / this->slabclass[i].size; /// SETTINGS
+        size *= factor;
+        /// SETTINGS
+        if (settings.verbose > 1) { /// VERBOSE
+            fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+                    i, slabclass[i].size, slabclass[i].perslab);
+        }
+    }
+
+    this->power_largest = i;
+    this->slabclass[this->power_largest].size = settings.item_size_max; /// SETTINGS
+    this->slabclass[this->power_largest].perslab = 1;
+    /// SETTINGS
+    if (settings.verbose > 1) { /// VERBOSE
+        fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+                i, slabclass[i].size, slabclass[i].perslab);
+    }
+
+    /* for the test suite:  faking of how much we've already malloc'd */
+    {
+        char *t_initial_malloc = getenv("T_MEMD_INITIAL_MALLOC");
+        if (t_initial_malloc)
+            this->mem_malloced = (size_t)atol(t_initial_malloc);
+    }
+
+    if (prealloc)
+        slabs_preallocate(this->power_largest);
+
+    /** items */
+    #if !defined(HAVE_GCC_ATOMICS) && !defined(__sun)
+    this->atomics_mutex = new mutex();
+    #endif
+    this->init_lock = new mutex();
+    pthread_cond_init(&this->init_cond, NULL);
+
+    this->item_global_lock = new mutex();
+    pthread_key_create(&this->item_lock_type_key, NULL);
+
+    int power;
+    switch (nthreads) {
+        case 1:
+        case 2:     power = 10; break;
+        case 3:     power = 11; break;
+        case 4:     power = 12; break;
+        default:    power = 13; break;
+    }
+
+    this->item_lock_count = hashsize(power);
+    this->item_locks =
+        (mutex **) calloc(item_lock_count, sizeof(mutex*));
+
+    if (!this->item_locks) {
+        std::cerr << "Can't allocate item locks" << std::endl;
+        exit(0); /// MEMORY (EPIC) FAIL
+    }
+
+    for (int i = 0; i < (int) this->item_lock_count; i++)
+        this->item_locks[i] = new mutex();
+
+    // partici i threadsss
+}
+
 void memslab::switch_item_lock_type(enum item_lock_types type) {
+    std::cerr << "Mi hanno detto che funziona" << std::endl;
 }
 
 /*** array associativo ***/
