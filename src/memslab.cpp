@@ -1,8 +1,8 @@
 #include "memslab.hpp"
 
-
-volatile rel_time_t current_time;
 struct settings settings;
+volatile rel_time_t current_time;
+
 
 memslab::memslab(
     const int hashpower_init,
@@ -309,31 +309,33 @@ void* memslab::_assoc_maintenance_thread(void) {
             }
         }
 
-//        mutex_unlock(&this->cache_lock);
         this->cache_lock->unlock();
         this->item_global_lock->unlock();
-//        item_unlock_global();
 
         if (!this->expanding) {
             /* finished expanding. tell all threads to use fine-grained locks */
-            this->switch_item_lock_type(ITEM_LOCK_GRANULAR);
+//            this->switch_item_lock_type(ITEM_LOCK_GRANULAR);
+            std::cout << "slabs_rebalancer_resume()" << std::endl;
             this->slabs_rebalancer_resume();
             /* We are done expanding.. just wait for next invocation */
-//            mutex_lock(&this->cache_lock);
+
+            std::cout << "cache_lock->lock()" << std::endl;
             this->cache_lock->lock();
+
             this->started_expanding = false;
+            std::cout << "cache_lock->cond_wait()" << std::endl;
             this->cache_lock->cond_wait(&this->assoc_maintenance_cond);
- //           pthread_cond_wait(&this->assoc_maintenance_cond, &this->cache_lock);
             /* Before doing anything, tell threads to use a global lock */
-//            mutex_unlock(&this->cache_lock);
+            std::cout << "cache_lock->unlock()" << std::endl;
             this->cache_lock->unlock();
+
+            std::cout << "slabs_rebalancer_pause()" << std::endl;
             this->slabs_rebalancer_pause();
-            this->switch_item_lock_type(ITEM_LOCK_GLOBAL);
-//            mutex_lock(&this->cache_lock);
+//            this->switch_item_lock_type(ITEM_LOCK_GLOBAL);
+
             this->cache_lock->lock();
             this->assoc_expand();
             this->cache_lock->unlock();
-//            mutex_unlock(&this->cache_lock);
         }
     }
 

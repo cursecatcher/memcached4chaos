@@ -4,10 +4,13 @@ LIBS = -lpthread
 FLAGS = -Wall
 OPTI = # -O2
 
-all: main.o memslab.o mutex.o hash.o defines.h
+all: main.o datacache.o memslab.o mutex.o hash.o defines.h
 	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS) $(OPTI)
 
-main.o: main.cpp 
+main.o: main.cpp
+	$(CC) -c $^ $(LIBS) $(FLAGS) $(OPTI)
+
+datacache.o: datacache.cpp datacache.hpp
 	$(CC) -c $^ $(LIBS) $(FLAGS) $(OPTI)
 
 memslab.o: memslab.cpp memslab.hpp

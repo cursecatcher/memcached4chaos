@@ -9,19 +9,6 @@
 #include "hash.hpp"
 #include "mutex.hpp"
 
-#define MAX_NUMBER_OF_SLAB_CLASSES (POWER_LARGEST+1)
-#define DEFAULT_SLAB_BULK_CHECK 1
-
-#define LARGEST_ID POWER_LARGEST
-#define POWER_LARGEST 200
-#define POWER_SMALLEST 1
-
-#define CHUNK_ALIGN_BYTES 8
-
-
-
-
-enum item_lock_types { ITEM_LOCK_GLOBAL = 0, ITEM_LOCK_GRANULAR };
 
 typedef struct {
     unsigned int size;      /* sizes of items */
@@ -57,6 +44,8 @@ enum reassign_result_type {
 enum move_status {
     MOVE_PASS=0, MOVE_DONE, MOVE_BUSY, MOVE_LOCKED
 };
+
+enum item_lock_types { ITEM_LOCK_GLOBAL = 0, ITEM_LOCK_GRANULAR };
 
 
 void* slab_rebalance_thread(void* arg);
