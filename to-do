@@ -1,38 +1,3 @@
 TO DO LIST:
 
-Segno con "/// STATS" le parti relative all'acquisizione di statistiche;
-le parti sono al momento commentate
-
-Segno con "/// TRACE" le parti relative all'acquisizione di dati per Dtrace;
-le parti sono al momento commentate
-
-Segno con "/// SETTINGS" le parti relative a strutture di tipo settings;
-le parti hanno al momento valori di default
-
-
-1-1. script configure per verificare se il sistema è in little o big endian
-1-2. modificare hash.* in modo da prevedere il caso big endian
-
-2. il costruttore di assoc_array sostituisce assoc_init() (OK)
-3. rendere cache_lock extern (OK)
-
-4. in assoc.cpp: completare assoc_maintenance_thread(), richiede slabbing
-
-5. in assoc.cpp: sistemare terzo parametro di pthread_create() (OK)
-
-6. in assoc.cpp: in stop_assoc_maintenance_thread: riscrivere mutex_lock()
-
-7. Nelle funzioni relative ai slab-thread vanno definiti i  metodi mancanti (OK)
-8. Verificare le inizializzazioni degli attributi di slab
-9. Implementare slabs_reassign_pick_any (e non solo) (OK)
-10. Inizializzare cache_lock (extern)
-11. Inizializzare settings (extern)
-12. Inizializzare assoc_array::slabbing
-13. Fare classe per statistiche (ma anche no?) (OK)
-14. Rendere slab_rebalance_signal accessibile all'esterno della classe (OK)
-15. Togliere i getter in slabs.cpp e rendere slab_allocator e items_management "amiche"
-16. Atomics? 
-17. store item
-18. in do_store_item (items.cpp): verificare che sia do_item_link invece di item_link
-19. mutex_lock non deve essere interna alla classe (OK)
-20. risolvere i riferimenti in slab_rebalance_move
+Sostituire 'struct default_engine*' con classe 'Engine'
