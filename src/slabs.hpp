@@ -32,7 +32,7 @@ private:
     void *mem_current;
     size_t mem_avail;
 
-    pthread_mutex_t mutex; // Access to the slab allocator is protected by this lock
+    pthread_mutex_t lock; // Access to the slab allocator is protected by this lock
 
 
     void *do_slabs_alloc(Engine *engine, const size_t size, unsigned int id);

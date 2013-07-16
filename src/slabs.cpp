@@ -64,24 +64,24 @@ unsigned int Slabs::slabs_clsid(Engine *engine, const size_t size) {
 void *Slabs::slabs_alloc(Engine *engine, const size_t size, unsigned int id) {
     void *ret;
 
-    this->mutex->lock();
+    pthread_mutex_lock(&this->lock);
     ret = do_slabs_alloc(engine, size, id);
-    this->mutex->unlock();
+    pthread_mutex_unlock(&this->lock);
 
     return ret;
 }
 
 void Slabs::slabs_free(Engine *engine, void *ptr, size_t size, unsigned int id) {
-    this->mutex->lock();
+    pthread_mutex_lock(&this->lock);
     do_slabs_free(engine, ptr, size, id);
-    this->mutex->unlock();
+    pthread_mutex_unlock(&this->lock);
 }
 
 void Slabs::slabs_adjust_mem_requested(Engine *engine, unsigned int id, size_t old, size_t ntotal) {
-    this->mutex->lock();
+    pthread_mutex_lock(&this->lock);
     assert(id >= POWER_SMALLEST && id <= this->power_largest);
     this->slabclass[id].requested += ntotal - old;
-    this->mutex->unlock();
+    pthread_mutex_unlock(&this->lock);
 }
 
 
