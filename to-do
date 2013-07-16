@@ -1,3 +1,4 @@
 TO DO LIST:
 
-Sostituire 'struct default_engine*' con classe 'Engine'
+- Sostituire 'struct default_engine*' con classe 'Engine'
+- Definire metodi per l'utilizzo di cache_lock (in Engine)
