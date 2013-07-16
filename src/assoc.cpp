@@ -86,7 +86,7 @@ void Assoc::assoc_maintenance_thread(struct default_engine *engine) {
     bool done = false;
 
     do {
-        engine->cache_lock->lock();
+        pthread_mutex_lock(&engine->cache_lock);
 
         for (int ii = 0; ii < hash_bulk_move && this->expanding; ii++) {
             hash_item *it, *next;
@@ -111,7 +111,7 @@ void Assoc::assoc_maintenance_thread(struct default_engine *engine) {
         if (!this->expanding)
             done = true;
 
-        engine->cache_lock->unlock();
+        pthread_mutex_unlock(&engine->cache_lock);
     } while (!done);
 }
 
