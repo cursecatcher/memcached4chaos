@@ -2,23 +2,23 @@
 /* powers-of-N allocation structures */
 
 typedef struct {
-    unsigned int size;      /* sizes of items */
-    unsigned int perslab;   /* how many items per slab */
+    unsigned int size;      // sizes of items
+    unsigned int perslab;   // how many items per slab
 
-    void **slots;           /* list of item ptrs */
-    unsigned int sl_total;  /* size of previous array */
-    unsigned int sl_curr;   /* first free slot */
+    void **slots;           // list of item ptrs
+    unsigned int sl_total;  // size of previous array
+    unsigned int sl_curr;   // first free slot
 
-    void *end_page_ptr;         /* pointer to next free item at end of page, or 0 */
-    unsigned int end_page_free; /* number of items remaining at end of last alloced page */
+    void *end_page_ptr;         // pointer to next free item at end of page, or 0
+    unsigned int end_page_free; // number of items remaining at end of last alloced page
 
-    unsigned int slabs;     /* how many slabs were allocated for this class */
+    unsigned int slabs;     // how many slabs were allocated for this class
 
-    void **slab_list;       /* array of slab pointers */
-    unsigned int list_size; /* size of prev array */
+    void **slab_list;       // array of slab pointers
+    unsigned int list_size; // size of prev array
 
-    unsigned int killing;  /* index+1 of dying slab, or zero if none */
-    size_t requested; /* The number of requested bytes */
+    unsigned int killing;  // index+1 of dying slab, or zero if none
+    size_t requested; // The number of requested bytes
 } slabclass_t;
 
 class Slabs {
@@ -32,8 +32,7 @@ private:
     void *mem_current;
     size_t mem_avail;
 
-   /* Access to the slab allocator is protected by this lock */
-    pthread_mutex_t mutex;
+    pthread_mutex_t mutex; // Access to the slab allocator is protected by this lock
 
 
     void *do_slabs_alloc(Engine *engine, const size_t size, unsigned int id);
