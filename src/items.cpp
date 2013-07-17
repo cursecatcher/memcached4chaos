@@ -7,11 +7,11 @@ Items::Items() {
 hash_item *Items::item_alloc(struct default_engine *engine,
                                const void *key, size_t nkey,
                                int flags,/*rel_time_t exptime, */
-                               int nbytes, const void *cookie) {
+                               int nbytes) {
     hash_item *it;
 
     pthread_mutex_lock(&engine->cache_lock);
-    it = do_item_alloc(engine, key, nkey, flags, /*exptime,*/ nbytes, cookie);
+    it = do_item_alloc(engine, key, nkey, flags, /*exptime,*/ nbytes);
     pthread_mutex_unlock(&engine->cache_lock);
     return it;
 }
@@ -104,8 +104,7 @@ void Items::item_unlink_q(struct default_engine *engine, hash_item *it) {
 hash_item *Items::do_item_alloc(struct default_engine *engine,
                                   const void *key, const size_t nkey,
                                   const int flags, const rel_time_t exptime,
-                                  const int nbytes,
-                                  const void *cookie) {
+                                  const int nbytes) {
     hash_item *it = NULL;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;

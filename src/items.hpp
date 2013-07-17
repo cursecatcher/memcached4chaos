@@ -31,8 +31,7 @@ private:
     hash_item *do_item_alloc(struct default_engine *engine,
                               const void *key, const size_t nkey,
                               const int flags,/*, const rel_time_t exptime,*/
-                              const int nbytes,
-                              const void *cookie);
+                              const int nbytes);
     hash_item *do_item_get(struct default_engine *engine,
                             const char *key, const size_t nkey);
     int do_item_link(struct default_engine *engine, hash_item *it);
@@ -57,7 +56,7 @@ public:
     hash_item *item_alloc(struct default_engine *engine,
                            const void *key, size_t nkey,
                            int flags,/*rel_time_t exptime, */
-                           int nbytes, const void *cookie);
+                           int nbytes);
 
     /** Get an item from the cache
      *
