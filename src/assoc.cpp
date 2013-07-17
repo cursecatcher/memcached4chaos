@@ -8,12 +8,14 @@ void* fun_assoc_maintenance_thread(void* arg);
 
 
 Assoc::Assoc(Engine* engine) {
+    this->hashpower = 16; // default
+
     this->primary_hashtable = calloc(hashsize(this->hashpower), sizeof(void *));
     if (!this->primary_hashtable)
         throw "SMERDO!";
 }
 
-hash_item *Assoc::assoc_find(struct default_engine *engine, uint32_t hash,
+hash_item *Assoc::assoc_find(Engine *engine, uint32_t hash,
                               const char *key, const size_t nkey) {
 
     hash_item *it;
@@ -31,7 +33,7 @@ hash_item *Assoc::assoc_find(struct default_engine *engine, uint32_t hash,
     return it;
 }
 
-int Assoc::assoc_insert(struct default_engine *engine, uint32_t hash,
+int Assoc::assoc_insert(Engine *engine, uint32_t hash,
                          hash_item *it) {
 
     unsigned int bucket;
@@ -56,7 +58,7 @@ int Assoc::assoc_insert(struct default_engine *engine, uint32_t hash,
 
 }
 
-void Assoc::assoc_delete(struct default_engine *engine, uint32_t hash,
+void Assoc::assoc_delete(Engine *engine, uint32_t hash,
                           const char *key, const size_t nkey) {
 
     hash_item **before = this->hashitem_before(engine, hash, key, nkey);
@@ -76,13 +78,13 @@ void Assoc::assoc_delete(struct default_engine *engine, uint32_t hash,
     assert(*before != NULL);
 }
 /*
-int Assoc::start_assoc_maintenance_thread(struct default_engine *engine) {
+int Assoc::start_assoc_maintenance_thread(Engine *engine) {
 }
 
-void Assoc::stop_assoc_maintenance_thread(struct default_engine *engine) {
+void Assoc::stop_assoc_maintenance_thread(Engine *engine) {
 } */
 
-void Assoc::assoc_maintenance_thread(struct default_engine *engine) {
+void Assoc::assoc_maintenance_thread(Engine *engine) {
     bool done = false;
 
     do {
@@ -123,7 +125,7 @@ void* fun_assoc_maintenance_thread(void* arg) {
 }
 
 
-void Assoc::assoc_expand(struct default_engine *engine) {
+void Assoc::assoc_expand(Engine *engine) {
     this->old_hashtable = this->primary_hashtable;
     this->primary_hashtable = calloc(hashsize(this->hashpower+1), sizeof(void *));
 
@@ -153,7 +155,7 @@ void Assoc::assoc_expand(struct default_engine *engine) {
     }
 }
 
-hash_item** Assoc::hashitem_before(struct default_engine *engine, uint32_t hash,
+hash_item** Assoc::hashitem_before(Engine *engine, uint32_t hash,
                             const char *key, const size_t nkey) {
 
     hash_item **pos;

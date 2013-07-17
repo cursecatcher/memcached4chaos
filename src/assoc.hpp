@@ -18,21 +18,21 @@ private:
     unsigned int expand_bucket;
 
 
-    void assoc_expand(struct default_engine *engine);
-    hash_item** hashitem_before(struct default_engine *engine, uint32_t hash,
+    void assoc_expand(Engine *engine);
+    hash_item** hashitem_before(Engine *engine, uint32_t hash,
                                 const char *key, const size_t nkey);
 
 public:
     Assoc(Engine* engine);
-    hash_item *assoc_find(struct default_engine *engine, uint32_t hash,
+    hash_item *assoc_find(Engine *engine, uint32_t hash,
                           const char *key, const size_t nkey);
-    int assoc_insert(struct default_engine *engine, uint32_t hash,
+    int assoc_insert(Engine *engine, uint32_t hash,
                      hash_item *it);
-    void assoc_delete(struct default_engine *engine, uint32_t hash,
+    void assoc_delete(Engine *engine, uint32_t hash,
                       const char *key, const size_t nkey);
-    void assoc_maintenance_thread(struct default_engine *engine);
-//    int start_assoc_maintenance_thread(struct default_engine *engine);
-//    void stop_assoc_maintenance_thread(struct default_engine *engine);
+    void assoc_maintenance_thread(Engine *engine);
+//    int start_assoc_maintenance_thread(Engine *engine);
+//    void stop_assoc_maintenance_thread(Engine *engine);
 
 
 };

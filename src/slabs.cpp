@@ -32,6 +32,7 @@ Slabs::Slabs(Engine *engine, const size_t size, const double factor, const bool 
     this->power_largest = i;
     this->slabclass[this->power_largest].size = engine->config.item_size_max;
     this->slabclass[this->power_largest].perslab = 1;
+    pthread_mutex_init(&this->lock, NULL);
 
     /* for the test suite: faking of how much we've already malloc'd */
     {

@@ -4,7 +4,7 @@
 Items::Items() {
 }
 
-hash_item *Items::item_alloc(struct default_engine *engine,
+hash_item *Items::item_alloc(Engine *engine,
                                const void *key, size_t nkey,
                                int flags,/*rel_time_t exptime, */
                                int nbytes) {
@@ -16,7 +16,7 @@ hash_item *Items::item_alloc(struct default_engine *engine,
     return it;
 }
 
-hash_item *Items::item_get(struct default_engine *engine,
+hash_item *Items::item_get(Engine *engine,
                              const void *key, const size_t nkey) {
     hash_item *it;
 
@@ -26,19 +26,19 @@ hash_item *Items::item_get(struct default_engine *engine,
     return it;
 }
 
-void Items::item_release(struct default_engine *engine, hash_item *it) {
+void Items::item_release(Engine *engine, hash_item *it) {
     pthread_mutex_lock(&engine->cache_lock);
     do_item_release(engine, item);
     pthread_mutex_unlock(&engine->cache_lock);
 }
 
-void Items::item_unlink(struct default_engine *engine, hash_item *it) {
+void Items::item_unlink(Engine *engine, hash_item *it) {
     pthread_mutex_lock(&engine->cache_lock);
     do_item_unlink(engine, item);
     pthread_mutex_unlock(&engine->cache_lock);
 }
 
-ENGINE_ERROR_CODE Items::store_item(struct default_engine *engine,
+ENGINE_ERROR_CODE Items::store_item(Engine *engine,
                                      hash_item *it,
                                      uint64_t cas,
                                      ENGINE_STORE_OPERATION operation,
@@ -53,7 +53,7 @@ ENGINE_ERROR_CODE Items::store_item(struct default_engine *engine,
 
 
 
-void Items::item_link_q(struct default_engine *engine, hash_item *it) {
+void Items::item_link_q(Engine *engine, hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -75,7 +75,7 @@ void Items::item_link_q(struct default_engine *engine, hash_item *it) {
     this->sizes[it->slabs_clsid]++;
 }
 
-void Items::item_unlink_q(struct default_engine *engine, hash_item *it) {
+void Items::item_unlink_q(Engine *engine, hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -101,7 +101,7 @@ void Items::item_unlink_q(struct default_engine *engine, hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *Items::do_item_alloc(struct default_engine *engine,
+hash_item *Items::do_item_alloc(Engine *engine,
                                   const void *key, const size_t nkey,
                                   const int flags, const rel_time_t exptime,
                                   const int nbytes) {
@@ -174,7 +174,7 @@ hash_item *Items::do_item_alloc(struct default_engine *engine,
     return it;
 }
 
-hash_item *Items::do_item_get(struct default_engine *engine,
+hash_item *Items::do_item_get(Engine *engine,
                                 const char *key, const size_t nkey) {
 
     rel_time_t current_time = engine-> server.core->get_current_time(); // ?
@@ -197,7 +197,7 @@ hash_item *Items::do_item_get(struct default_engine *engine,
     return it;
 }
 
-int Items::do_item_link(struct default_engine *engine, hash_item *it) {
+int Items::do_item_link(Engine *engine, hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
     assert(it->nbytes < (1024 * 1024)); // 1 MB max size
     it->iflag |= ITEM_LINKED;
@@ -211,7 +211,7 @@ int Items::do_item_link(struct default_engine *engine, hash_item *it) {
     return 1;
 }
 
-void Items::do_item_unlink(struct default_engine *engine, hash_item *it) {
+void Items::do_item_unlink(Engine *engine, hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != 0) {
         it->iflag &= ~ITEM_LINKED;
         engine->assoc->assoc_delete(engine, hash(item_get_key(it), it->nkey),
@@ -222,14 +222,14 @@ void Items::do_item_unlink(struct default_engine *engine, hash_item *it) {
     }
 }
 
-void Items::do_item_release(struct default_engine *engine, hash_item *it) {
+void Items::do_item_release(Engine *engine, hash_item *it) {
     if (it->refcount)
         it->refcount--;
     if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == 0)
         this->item_free(engine, it);
 }
 
-void Items::do_item_update(struct default_engine *engine, hash_item *it) {
+void Items::do_item_update(Engine *engine, hash_item *it) {
     rel_time_t current_time = engine->server.core->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
@@ -243,7 +243,7 @@ void Items::do_item_update(struct default_engine *engine, hash_item *it) {
     }
 }
 
-int Items::do_item_replace(struct default_engine *engine,
+int Items::do_item_replace(Engine *engine,
                             hash_item *it, hash_item *new_it) {
 
     assert((it->iflag & ITEM_SLABBED) == 0);
@@ -252,7 +252,7 @@ int Items::do_item_replace(struct default_engine *engine,
     return do_item_link(engine, new_it);
 }
 
-void Items::item_free(struct default_engine *engine, hash_item *it) {
+void Items::item_free(Engine *engine, hash_item *it) {
     size_t ntotal = ITEM_ntotal(engine, it);
 
     assert((it->iflag & ITEM_LINKED) == 0);

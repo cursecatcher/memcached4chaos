@@ -26,21 +26,21 @@ private:
     unsigned int sizes[POWER_LARGEST];
 
 
-    void item_link_q(struct default_engine *engine, hash_item *it);
-    void item_unlink_q(struct default_engine *engine, hash_item *it);
-    hash_item *do_item_alloc(struct default_engine *engine,
+    void item_link_q(Engine *engine, hash_item *it);
+    void item_unlink_q(Engine *engine, hash_item *it);
+    hash_item *do_item_alloc(Engine *engine,
                               const void *key, const size_t nkey,
                               const int flags,/*, const rel_time_t exptime,*/
                               const int nbytes);
-    hash_item *do_item_get(struct default_engine *engine,
+    hash_item *do_item_get(Engine *engine,
                             const char *key, const size_t nkey);
-    int do_item_link(struct default_engine *engine, hash_item *it);
-    void do_item_unlink(struct default_engine *engine, hash_item *it);
-    void do_item_release(struct default_engine *engine, hash_item *it);
-    void do_item_update(struct default_engine *engine, hash_item *it);
-    int do_item_replace(struct default_engine *engine,
+    int do_item_link(Engine *engine, hash_item *it);
+    void do_item_unlink(Engine *engine, hash_item *it);
+    void do_item_release(Engine *engine, hash_item *it);
+    void do_item_update(Engine *engine, hash_item *it);
+    int do_item_replace(Engine *engine,
                         hash_item *it, hash_item *new_it);
-    void item_free(struct default_engine *engine, hash_item *it);
+    void item_free(Engine *engine, hash_item *it);
 
 public:
     Items();
@@ -53,7 +53,7 @@ public:
      * @param exptime when the object should expire ***REMOVED***
      * @param nbytes the number of bytes in the body for the item
      * @return a pointer to an item on success NULL otherwise */
-    hash_item *item_alloc(struct default_engine *engine,
+    hash_item *item_alloc(Engine *engine,
                            const void *key, size_t nkey,
                            int flags,/*rel_time_t exptime, */
                            int nbytes);
@@ -64,18 +64,18 @@ public:
      * @param key the key for the item to get
      * @param nkey the number of bytes in the key
      * @return pointer to the item if it exists or NULL otherwise */
-    hash_item *item_get(struct default_engine *engine,
+    hash_item *item_get(Engine *engine,
                          const void *key, const size_t nkey);
 
     /** Release our reference to the current item
      * @param engine handle to the storage engine
      * @param it the item to release */
-    void item_release(struct default_engine *engine, hash_item *it);
+    void item_release(Engine *engine, hash_item *it);
 
     /** Unlink the item from the hash table (make it inaccessible)
      * @param engine handle to the storage engine
      * @param it the item to unlink */
-    void item_unlink(struct default_engine *engine, hash_item *it);
+    void item_unlink(Engine *engine, hash_item *it);
 
     /** Store an item in the cache
      * @param engine handle to the storage engine
@@ -86,7 +86,7 @@ public:
      *
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
-    ENGINE_ERROR_CODE store_item(struct default_engine *engine,
+    ENGINE_ERROR_CODE store_item(Engine *engine,
                                  hash_item *it,
                                  uint64_t cas,
                                  ENGINE_STORE_OPERATION operation,
