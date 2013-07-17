@@ -1,4 +1,4 @@
 memcached4chaos
 ===============
 
-Memcached's reimplementation withouh libevent. 
+A C++ refactoring of Memcached without libevent
