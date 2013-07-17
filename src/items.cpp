@@ -133,101 +133,139 @@ hash_item *Items::do_item_alloc(struct default_engine *engine,
         if (this->tails[id] == NULL)
             return NULL;
 
-        hash_item *search; /** riprendi da..... **/
-    }
+        hash_item *search;
 
-    if (it == NULL && (it = slabs_alloc(engine, ntotal, id)) == NULL) {
-
-/** .....quiiiiiii!!! **/
-        for (search = engine->items.tails[id]; tries > 0 && search != NULL; tries--, search=search->prev) {
+        for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
             if (search->refcount == 0) {
-                if (search->exptime == 0 || search->exptime > current_time) {
-                    engine->items.itemstats[id].evicted++;
-                    engine->items.itemstats[id].evicted_time = current_time - search->time;
-                    if (search->exptime != 0) {
-                        engine->items.itemstats[id].evicted_nonzero++;
-                    }
-                    pthread_mutex_lock(&engine->stats.lock);
-                    engine->stats.evictions++;
-                    pthread_mutex_unlock(&engine->stats.lock);
-                    engine->server.stat->evicting(cookie,
-                                                  item_get_key(search),
-                                                  search->nkey);
-                } else {
-                    engine->items.itemstats[id].reclaimed++;
-                    pthread_mutex_lock(&engine->stats.lock);
-                    engine->stats.reclaimed++;
-                    pthread_mutex_unlock(&engine->stats.lock);
-                }
-                do_item_unlink(engine, search);
+                this->do_item_unlink(engine, search);
                 break;
             }
-        }
-        it = slabs_alloc(engine, ntotal, id);
-        if (it == 0) {
-            engine->items.itemstats[id].outofmemory++;
+
+        if ((it = engine->slabs->slabs_alloc(engine, ntotal, id)) == NULL) {
             /* Last ditch effort. There is a very rare bug which causes
              * refcount leaks. We've fixed most of them, but it still happens,
              * and it may happen in the future.
              * We can reasonably assume no item can stay locked for more than
              * three hours, so if we find one in the tail which is that old,
-             * free it anyway.
-             */
-            tries = search_items;
-            for (search = engine->items.tails[id]; tries > 0 && search != NULL; tries--, search=search->prev) {
-                if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < current_time) {
-                    engine->items.itemstats[id].tailrepairs++;
-                    search->refcount = 0;
-                    do_item_unlink(engine, search);
-                    break;
-                }
-            }
-            it = slabs_alloc(engine, ntotal, id);
-            if (it == 0) {
+             * free it anyway. */
+             tries = search_items;
+             for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev) {
+                 search->refcount = 0; /****/
+                 this->do_item_unlink(engine, search);
+                 break;
+             }
+
+             if ((it = engine->slabs->slabs_alloc(engine, ntotal, id)) == NULL)
                 return NULL;
-            }
         }
     }
 
     assert(it->slabs_clsid == 0);
-
     it->slabs_clsid = id;
 
-    assert(it != engine->items.heads[it->slabs_clsid]);
-
-    it->next = it->prev = it->h_next = 0;
-    it->refcount = 1;     /* the caller will have a reference */
-    DEBUG_REFCNT(it, '*');
+    assert(it != this->heads[it->slabs_clsid]);
+    it->next = it->prev = it->h_next = NULL;
+    it->refcount = 1; // the caller will have a reference
     it->iflag = engine->config.use_cas ? ITEM_WITH_CAS : 0;
     it->nkey = nkey;
     it->nbytes = nbytes;
     it->flags = flags;
-    memcpy((void*)item_get_key(it), key, nkey);
-    it->exptime = exptime;
+    memcpy((void *) item_get_key(it), key, nkey);
+
     return it;
 }
 
 hash_item *Items::do_item_get(struct default_engine *engine,
                                 const char *key, const size_t nkey) {
+
+    rel_time_t current_time = engine-> server.core->get_current_time(); // ?
+    hash_item *it = assoc_find(engine, hash(key, nkey), key, nkey);
+
+    if (it) {
+        if (engine->config.oldest_live != 0 &&
+            engine->config.oldest_live <= current_time &&
+            it->time <= engine->config.oldest_live) {
+
+            this->do_item_unlink(engine, it);
+            it = NULL;
+        }
+        else {
+            it->refcount++;
+            this->do_item_update(engine, it);
+        }
+    }
+
+    return it;
 }
 
 int Items::do_item_link(struct default_engine *engine, hash_item *it) {
+    assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
+    assert(it->nbytes < (1024 * 1024)); // 1 MB max size
+    it->iflag |= ITEM_LINKED;
+    it->time = engine->server.core->get_current_time(); //globals?
+    engine->assoc->assoc_insert(engine, hash(item_get_key(it), it->nkey), it);
+
+    /* Allocate a new CAS ID on link. */
+    item_set_cas(NULL, NULL, it, get_cas_id()); // BOH
+    this->item_link_q(engine, it);
+
+    return 1;
 }
 
 void Items::do_item_unlink(struct default_engine *engine, hash_item *it) {
+    if ((it->iflag & ITEM_LINKED) != 0) {
+        it->iflag &= ~ITEM_LINKED;
+        engine->assoc->assoc_delete(engine, hash(item_get_key(it), it->nkey),
+                                    item_get_key(it), it->nkey);
+        this->item_unlink_q(engine, it);
+        if (it->refcount == 0)
+            this->item_free(engine, it);
+    }
 }
 
 void Items::do_item_release(struct default_engine *engine, hash_item *it) {
+    if (it->refcount)
+        it->refcount--;
+    if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == 0)
+        this->item_free(engine, it);
 }
 
 void Items::do_item_update(struct default_engine *engine, hash_item *it) {
+    rel_time_t current_time = engine->server.core->get_current_time();
+
+    if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
+        assert((it->iflag & ITEM_SLABBED) == 0);
+
+        if ((it->iflag & ITEM_LINKED) != 0) {
+            this->item_unlink_q(engine, it);
+            it->time = current_time;
+            this->item_link_q(engine, it);
+        }
+    }
 }
 
 int Items::do_item_replace(struct default_engine *engine,
                             hash_item *it, hash_item *new_it) {
+
+    assert((it->iflag & ITEM_SLABBED) == 0);
+
+    this->do_item_unlink(engine, it);
+    return do_item_link(engine, new_it);
 }
 
 void Items::item_free(struct default_engine *engine, hash_item *it) {
+    size_t ntotal = ITEM_ntotal(engine, it);
+
+    assert((it->iflag & ITEM_LINKED) == 0);
+    assert(it != this->heads[it->slabs_clsid]);
+    assert(it != this->tails[it->slabs_clsid]);
+    assert(it->refcount == 0);
+
+    // so slab size changer can tell later if item is already free or not
+    unsigned int clsid = it->slabs_clsid;
+    it->slabs_clsid = 0;
+    it->iflag |= ITEM_SLABBED;
+    engine->slabs->slabs_free(engine, it, ntotal, clsid);
 }
 
 
