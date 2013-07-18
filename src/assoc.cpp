@@ -9,10 +9,9 @@ void* fun_assoc_maintenance_thread(void* arg);
 
 Assoc::Assoc(Engine* engine) {
     this->engine = engine;
-
-    this->hashpower = 16; // default
-
+    this->hashpower = engine->hashpower;
     this->primary_hashtable = calloc(hashsize(this->hashpower), sizeof(void *));
+
     if (!this->primary_hashtable)
         throw "SMERDO!";
 }
