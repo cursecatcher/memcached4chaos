@@ -1,59 +1,57 @@
 #include "items.hpp"
 
 
-Items::Items() {
+Items::Items(Engine *engine) {
+    this->engine = engine;
 }
 
-hash_item *Items::item_alloc(Engine *engine,
-                               const void *key, size_t nkey,
+hash_item *Items::item_alloc(const void *key, size_t nkey,
                                int flags,/*rel_time_t exptime, */
                                int nbytes) {
     hash_item *it;
 
-    pthread_mutex_lock(&engine->cache_lock);
-    it = do_item_alloc(engine, key, nkey, flags, /*exptime,*/ nbytes);
-    pthread_mutex_unlock(&engine->cache_lock);
+    this->engine->lock_cache();
+    it = do_item_alloc(key, nkey, flags, /*exptime,*/ nbytes);
+    this->engine->unlock_cache();
     return it;
 }
 
-hash_item *Items::item_get(Engine *engine,
-                             const void *key, const size_t nkey) {
+hash_item *Items::item_get(const void *key, const size_t nkey) {
     hash_item *it;
 
-    pthread_mutex_lock(&engine->cache_lock);
-    it = do_item_get(engine, key, nkey);
-    pthread_mutex_unlock(&enigne->cache_lock);
+    this->engine->lock_cache();
+    it = do_item_get(key, nkey);
+    this->engine->unlock_cache();
     return it;
 }
 
-void Items::item_release(Engine *engine, hash_item *it) {
-    pthread_mutex_lock(&engine->cache_lock);
-    do_item_release(engine, item);
-    pthread_mutex_unlock(&engine->cache_lock);
+void Items::item_release(hash_item *it) {
+    this->engine->lock_cache();
+    do_item_release(item);
+    this->engine->unlock_cache();
 }
 
-void Items::item_unlink(Engine *engine, hash_item *it) {
-    pthread_mutex_lock(&engine->cache_lock);
-    do_item_unlink(engine, item);
-    pthread_mutex_unlock(&engine->cache_lock);
+void Items::item_unlink(hash_item *it) {
+    this->engine->lock_cache();
+    do_item_unlink(item);
+    this->engine->unlock_cache();
 }
 
-ENGINE_ERROR_CODE Items::store_item(Engine *engine,
-                                     hash_item *it,
+ENGINE_ERROR_CODE Items::store_item(hash_item *it,
                                      uint64_t cas,
                                      ENGINE_STORE_OPERATION operation,
                                      const void *cookie) {
     ENGINE_ERROR_CODE ret;
 
-    pthread_mutex_lock(&engine->cache_lock);
-    ret = do_store_item(engine, item, cas, operation, cookie);
-    pthread_mutex_unlock(&engine->cache_lock);
+    this->engine->lock_cache();
+    ret = do_store_item(item, cas, operation, cookie);
+    this->engine->unlock_cache();
     return ret;
 }
 
 
 
-void Items::item_link_q(Engine *engine, hash_item *it) {
+void Items::item_link_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -75,7 +73,7 @@ void Items::item_link_q(Engine *engine, hash_item *it) {
     this->sizes[it->slabs_clsid]++;
 }
 
-void Items::item_unlink_q(Engine *engine, hash_item *it) {
+void Items::item_unlink_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -101,8 +99,7 @@ void Items::item_unlink_q(Engine *engine, hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *Items::do_item_alloc(Engine *engine,
-                                  const void *key, const size_t nkey,
+hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
                                   const int flags, const rel_time_t exptime,
                                   const int nbytes) {
     hash_item *it = NULL;
@@ -112,10 +109,10 @@ hash_item *Items::do_item_alloc(Engine *engine,
     if (engine->config.use_cas)
         ntotal += sizeof(uint64_t);
 
-    if ((id = slabs_clsid(engine, ntotal)) == 0)
+    if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
         return 0;
 
-    if ((it = engine->slabs->slabs_alloc(engine, ntotal, id)) == NULL) {
+    if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
         /* Could not find an expired item at the tail, and memory allocation
          * failed. Try to evict some items! */
         tries = search_items; // da definire magari
@@ -136,11 +133,11 @@ hash_item *Items::do_item_alloc(Engine *engine,
 
         for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
             if (search->refcount == 0) {
-                this->do_item_unlink(engine, search);
+                this->do_item_unlink(search);
                 break;
             }
 
-        if ((it = engine->slabs->slabs_alloc(engine, ntotal, id)) == NULL) {
+        if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
             /* Last ditch effort. There is a very rare bug which causes
              * refcount leaks. We've fixed most of them, but it still happens,
              * and it may happen in the future.
@@ -150,11 +147,11 @@ hash_item *Items::do_item_alloc(Engine *engine,
              tries = search_items;
              for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev) {
                  search->refcount = 0; /****/
-                 this->do_item_unlink(engine, search);
+                 this->do_item_unlink(search);
                  break;
              }
 
-             if ((it = engine->slabs->slabs_alloc(engine, ntotal, id)) == NULL)
+             if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL)
                 return NULL;
         }
     }
@@ -174,86 +171,84 @@ hash_item *Items::do_item_alloc(Engine *engine,
     return it;
 }
 
-hash_item *Items::do_item_get(Engine *engine,
-                                const char *key, const size_t nkey) {
+hash_item *Items::do_item_get(const char *key, const size_t nkey) {
 
-    rel_time_t current_time = engine-> server.core->get_current_time(); // ?
-    hash_item *it = assoc_find(engine, hash(key, nkey), key, nkey);
+    rel_time_t current_time = this->engine-> server.core->get_current_time(); // ?
+    hash_item *it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey);
 
     if (it) {
-        if (engine->config.oldest_live != 0 &&
-            engine->config.oldest_live <= current_time &&
-            it->time <= engine->config.oldest_live) {
+        if (this->engine->config.oldest_live != 0 &&
+            this->engine->config.oldest_live <= current_time &&
+            it->time <= this->engine->config.oldest_live) {
 
-            this->do_item_unlink(engine, it);
+            this->do_item_unlink(it);
             it = NULL;
         }
         else {
             it->refcount++;
-            this->do_item_update(engine, it);
+            this->do_item_update(it);
         }
     }
 
     return it;
 }
 
-int Items::do_item_link(Engine *engine, hash_item *it) {
+int Items::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
     assert(it->nbytes < (1024 * 1024)); // 1 MB max size
     it->iflag |= ITEM_LINKED;
-    it->time = engine->server.core->get_current_time(); //globals?
-    engine->assoc->assoc_insert(engine, hash(item_get_key(it), it->nkey), it);
+    it->time = this->engine->server.core->get_current_time(); //globals?
+    this->engine->assoc->assoc_insert(hash(item_get_key(it), it->nkey), it);
 
     /* Allocate a new CAS ID on link. */
     item_set_cas(NULL, NULL, it, get_cas_id()); // BOH
-    this->item_link_q(engine, it);
+    this->item_link_q(it);
 
     return 1;
 }
 
-void Items::do_item_unlink(Engine *engine, hash_item *it) {
+void Items::do_item_unlink(hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != 0) {
         it->iflag &= ~ITEM_LINKED;
-        engine->assoc->assoc_delete(engine, hash(item_get_key(it), it->nkey),
+        this->engine->assoc->assoc_delete(hash(item_get_key(it), it->nkey),
                                     item_get_key(it), it->nkey);
-        this->item_unlink_q(engine, it);
+        this->item_unlink_q(it);
         if (it->refcount == 0)
-            this->item_free(engine, it);
+            this->item_free(it);
     }
 }
 
-void Items::do_item_release(Engine *engine, hash_item *it) {
+void Items::do_item_release(hash_item *it) {
     if (it->refcount)
         it->refcount--;
     if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == 0)
-        this->item_free(engine, it);
+        this->item_free(it);
 }
 
-void Items::do_item_update(Engine *engine, hash_item *it) {
-    rel_time_t current_time = engine->server.core->get_current_time();
+void Items::do_item_update(hash_item *it) {
+    rel_time_t current_time = this->engine->server.core->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->iflag & ITEM_SLABBED) == 0);
 
         if ((it->iflag & ITEM_LINKED) != 0) {
-            this->item_unlink_q(engine, it);
+            this->item_unlink_q(it);
             it->time = current_time;
-            this->item_link_q(engine, it);
+            this->item_link_q(it);
         }
     }
 }
 
-int Items::do_item_replace(Engine *engine,
-                            hash_item *it, hash_item *new_it) {
+int Items::do_item_replace(hash_item *it, hash_item *new_it) {
 
     assert((it->iflag & ITEM_SLABBED) == 0);
 
-    this->do_item_unlink(engine, it);
-    return do_item_link(engine, new_it);
+    this->do_item_unlink(it);
+    return do_item_link(new_it);
 }
 
-void Items::item_free(Engine *engine, hash_item *it) {
-    size_t ntotal = ITEM_ntotal(engine, it);
+void Items::item_free(hash_item *it) {
+    size_t ntotal = ITEM_ntotal(engine, it); /// ????
 
     assert((it->iflag & ITEM_LINKED) == 0);
     assert(it != this->heads[it->slabs_clsid]);
@@ -264,7 +259,7 @@ void Items::item_free(Engine *engine, hash_item *it) {
     unsigned int clsid = it->slabs_clsid;
     it->slabs_clsid = 0;
     it->iflag |= ITEM_SLABBED;
-    engine->slabs->slabs_free(engine, it, ntotal, clsid);
+    this->engine->slabs->slabs_free(it, ntotal, clsid);
 }
 
 
