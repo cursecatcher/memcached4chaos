@@ -1,5 +1,7 @@
 class Assoc {
 private:
+    Engine *engine;
+
     unsigned int hashpower; // how many powers of 2's worth of buckets we use
     unsigned int hash_items; // Number of items in the hash table.
 
@@ -18,19 +20,15 @@ private:
     unsigned int expand_bucket;
 
 
-    void assoc_expand(Engine *engine);
-    hash_item** hashitem_before(Engine *engine, uint32_t hash,
-                                const char *key, const size_t nkey);
+    void assoc_expand();
+    hash_item** hashitem_before(uint32_t hash, const char *key, const size_t nkey);
 
 public:
     Assoc(Engine* engine);
-    hash_item *assoc_find(Engine *engine, uint32_t hash,
-                          const char *key, const size_t nkey);
-    int assoc_insert(Engine *engine, uint32_t hash,
-                     hash_item *it);
-    void assoc_delete(Engine *engine, uint32_t hash,
-                      const char *key, const size_t nkey);
-    void assoc_maintenance_thread(Engine *engine);
+    hash_item *assoc_find(uint32_t hash,const char *key, const size_t nkey);
+    int assoc_insert(uint32_t hash, hash_item *it);
+    void assoc_delete(uint32_t hash, const char *key, const size_t nkey);
+    void assoc_maintenance_thread();
 //    int start_assoc_maintenance_thread(Engine *engine);
 //    void stop_assoc_maintenance_thread(Engine *engine);
 
