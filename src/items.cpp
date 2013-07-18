@@ -106,7 +106,7 @@ hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
 
-    if (engine->config.use_cas)
+    if (this->engine->config.use_cas)
         ntotal += sizeof(uint64_t);
 
     if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
@@ -119,7 +119,7 @@ hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
 
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
-        if (engine->config.evict_to_free == 0)
+        if (this->engine->config.evict_to_free == 0)
             return NULL;
 
         /* try to get one off the right LRU
@@ -162,7 +162,7 @@ hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
     assert(it != this->heads[it->slabs_clsid]);
     it->next = it->prev = it->h_next = NULL;
     it->refcount = 1; // the caller will have a reference
-    it->iflag = engine->config.use_cas ? ITEM_WITH_CAS : 0;
+    it->iflag = this->engine->config.use_cas ? ITEM_WITH_CAS : 0;
     it->nkey = nkey;
     it->nbytes = nbytes;
     it->flags = flags;
@@ -172,11 +172,10 @@ hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
 }
 
 hash_item *Items::do_item_get(const char *key, const size_t nkey) {
-
     rel_time_t current_time = this->engine-> server.core->get_current_time(); // ?
-    hash_item *it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey);
+    hash_item *it;
 
-    if (it) {
+    if (it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey)) {
         if (this->engine->config.oldest_live != 0 &&
             this->engine->config.oldest_live <= current_time &&
             it->time <= this->engine->config.oldest_live) {
@@ -244,7 +243,7 @@ int Items::do_item_replace(hash_item *it, hash_item *new_it) {
     assert((it->iflag & ITEM_SLABBED) == 0);
 
     this->do_item_unlink(it);
-    return do_item_link(new_it);
+    return this->do_item_link(new_it);
 }
 
 void Items::item_free(hash_item *it) {
