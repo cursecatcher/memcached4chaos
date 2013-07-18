@@ -2,3 +2,4 @@ TO DO LIST:
 
 - Sostituire 'struct default_engine*' con classe 'Engine'
 - Definire metodi per l'utilizzo di cache_lock (in Engine)
+- Verificare se ITEM_ntotal necessiti del parametro Engine* (items.cpp)
