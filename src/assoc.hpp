@@ -24,7 +24,8 @@ private:
     hash_item** hashitem_before(uint32_t hash, const char *key, const size_t nkey);
 
 public:
-    Assoc(Engine* engine);
+    Assoc(Engine* engine, unsigned int hashpower);
+
     hash_item *assoc_find(uint32_t hash,const char *key, const size_t nkey);
     int assoc_insert(uint32_t hash, hash_item *it);
     void assoc_delete(uint32_t hash, const char *key, const size_t nkey);

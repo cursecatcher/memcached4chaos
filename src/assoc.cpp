@@ -7,9 +7,9 @@
 void* fun_assoc_maintenance_thread(void* arg);
 
 
-Assoc::Assoc(Engine* engine) {
+Assoc::Assoc(Engine* engine, unsigned int hashpower) {
     this->engine = engine;
-    this->hashpower = engine->hashpower;
+    this->hashpower = hashpower;
     this->primary_hashtable = calloc(hashsize(this->hashpower), sizeof(void *));
 
     if (!this->primary_hashtable)
