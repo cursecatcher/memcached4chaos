@@ -23,6 +23,8 @@ typedef struct {
 
 class Slabs {
 private:
+    Engine *engine;
+
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
     size_t mem_malloced;
@@ -35,17 +37,18 @@ private:
     pthread_mutex_t lock; // Access to the slab allocator is protected by this lock
 
 
-    void *do_slabs_alloc(Engine *engine, const size_t size, unsigned int id);
-    void do_slabs_free(Engine *engine, void *ptr, const size_t size, unsigned int id);
-    int do_slabs_newslab(Engine *engine, const unsigned int id);
-    bool grow_slab_list(Engine *engine, const unsigned int id);
-    void *memory_allocate(Engine *engine, size_t size);
+    void *do_slabs_alloc(const size_t size, unsigned int id);
+    void do_slabs_free(void *ptr, const size_t size, unsigned int id);
+    int do_slabs_newslab(const unsigned int id);
+    bool grow_slab_list(const unsigned int id);
+    void *memory_allocate(size_t size);
 
 public:
 
-    Slabs(Engine *engine, const size_t size, const double factor, const bool prealloc);
-    unsigned int slabs_clsid(Engine *engine, const size_t size);
-    void *slabs_alloc(Engine *engine, const size_t size, unsigned int id);
-    void slabs_free(Engine *engine, void *ptr, size_t size, unsigned int id);
-    void slabs_adjust_mem_requested(Engine *engine, unsigned int id, size_t old, size_t ntotal);
+    Slabs(Engine *engine, const size_t limit, const double factor, const bool prealloc);
+
+    unsigned int slabs_clsid(const size_t size);
+    void *slabs_alloc(const size_t size, unsigned int id);
+    void slabs_free(void *ptr, size_t size, unsigned int id);
+    void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal);
 };

@@ -1,8 +1,7 @@
 #include "slabs.hpp"
 
-Slabs::Slabs(Engine *engine, const size_t size, const double factor, const bool prealloc) {
-    unsigned int size = sizeof(hash_item) + engine->config.chunk_size;
-
+Slabs::Slabs(Engine *engine, const size_t limit, const double factor, const bool prealloc) {
+    this->engine = engine;
     this->mem_limit = limit;
 
     if (prealloc) {
@@ -19,18 +18,20 @@ Slabs::Slabs(Engine *engine, const size_t size, const double factor, const bool 
     memset(this->slabclass, 0, sizeof(this->slabclass));
 
     int i = POWER_SMALLEST - 1;
-    while (++i < POWER_LARGEST && size <= engine->config.item_size_max / factor) {
+    unsigned int size = sizeof(hash_item) + this->engine->config.chunk_size;
+
+    while (++i < POWER_LARGEST && size <= this->engine->config.item_size_max / factor) {
         /* make sure items are always n-byte aligned */
         if (size % CHUNK_ALIGN_BYTES)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
         this->slabclass[i].size = size;
-        this->slabclass[i].perslab = engine->config.item_size_max / size;
+        this->slabclass[i].perslab = this->engine->config.item_size_max / size;
         size *= factor;
     }
 
     this->power_largest = i;
-    this->slabclass[this->power_largest].size = engine->config.item_size_max;
+    this->slabclass[this->power_largest].size = this->engine->config.item_size_max;
     this->slabclass[this->power_largest].perslab = 1;
     pthread_mutex_init(&this->lock, NULL);
 
@@ -49,7 +50,7 @@ Slabs::Slabs(Engine *engine, const size_t size, const double factor, const bool 
 #endif
 }
 
-unsigned int Slabs::slabs_clsid(Engine *engine, const size_t size) {
+unsigned int Slabs::slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
 
     if (size == 0)
@@ -62,23 +63,23 @@ unsigned int Slabs::slabs_clsid(Engine *engine, const size_t size) {
     return res;
 }
 
-void *Slabs::slabs_alloc(Engine *engine, const size_t size, unsigned int id) {
+void *Slabs::slabs_alloc(const size_t size, unsigned int id) {
     void *ret;
 
     pthread_mutex_lock(&this->lock);
-    ret = do_slabs_alloc(engine, size, id);
+    ret = this->do_slabs_alloc(size, id);
     pthread_mutex_unlock(&this->lock);
 
     return ret;
 }
 
-void Slabs::slabs_free(Engine *engine, void *ptr, size_t size, unsigned int id) {
+void Slabs::slabs_free(void *ptr, size_t size, unsigned int id) {
     pthread_mutex_lock(&this->lock);
-    do_slabs_free(engine, ptr, size, id);
+    this->do_slabs_free(ptr, size, id);
     pthread_mutex_unlock(&this->lock);
 }
 
-void Slabs::slabs_adjust_mem_requested(Engine *engine, unsigned int id, size_t old, size_t ntotal) {
+void Slabs::slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
     pthread_mutex_lock(&this->lock);
     assert(id >= POWER_SMALLEST && id <= this->power_largest);
     this->slabclass[id].requested += ntotal - old;
@@ -86,10 +87,10 @@ void Slabs::slabs_adjust_mem_requested(Engine *engine, unsigned int id, size_t o
 }
 
 
-void *Slabs::do_slabs_alloc(Engine *engine, const size_t size, unsigned int id) {
+void *Slabs::do_slabs_alloc(const size_t size, unsigned int id) {
     void *ret = NULL;
 
-    if (id < POWER_SMALLEST || id > engine->slabs.power_largest)
+    if (id < POWER_SMALLEST || id > this->power_largest)
         return NULL;
 
 #ifdef USE_SYSTEM_MALLOC
@@ -104,7 +105,7 @@ void *Slabs::do_slabs_alloc(Engine *engine, const size_t size, unsigned int id) 
 
     /* fail unless we have space at the end of a recently allocated page,
        we have something on our freelist, or we could allocate a new page */
-    if (!p->end_page_ptr && !p->sl_curr && !this->do_slabs_newslab(engine, id)) {
+    if (!p->end_page_ptr && !p->sl_curr && !this->do_slabs_newslab(id)) {
         // we don't have more memory available
         ret = NULL;
     }
@@ -125,8 +126,8 @@ void *Slabs::do_slabs_alloc(Engine *engine, const size_t size, unsigned int id) 
     return ret;
 }
 
-void Slabs::do_slabs_free(Engine *engine, void *ptr, const size_t size, unsigned int id) {
-    if (id < POWER_SMALLEST || id > engine->slabs.power_largest)
+void Slabs::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
+    if (id < POWER_SMALLEST || id > this->power_largest)
         return;
 
 #ifdef USE_SYSTEM_MALLOC
@@ -150,14 +151,14 @@ void Slabs::do_slabs_free(Engine *engine, void *ptr, const size_t size, unsigned
     p->requested -= size;
 }
 
-int Slabs::do_slabs_newslab(Engine *engine, const unsigned int id) {
+int Slabs::do_slabs_newslab(const unsigned int id) {
     slabclass_t *p = this->slabclass[id];
     int len = p->size * p->perslab;
     void *ptr;
 
     if ((this->mem_limit && this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
-        (!this->grow_slab_list(engine, id)) ||
-        ((ptr = this->memory_allocate(engine, (size_t) len)) == NULL) {
+        (!this->grow_slab_list(id)) ||
+        ((ptr = this->memory_allocate((size_t) len)) == NULL) {
 
         return 0;
     }
@@ -173,7 +174,7 @@ int Slabs::do_slabs_newslab(Engine *engine, const unsigned int id) {
 
 }
 
-bool Slabs::grow_slab_list(Engine *engine, const unsigned int id) {
+bool Slabs::grow_slab_list(const unsigned int id) {
     slabclass_t *p = &this->slabclass[id];
 
     if (p->slabs == p->list_size) {
@@ -188,7 +189,7 @@ bool Slabs::grow_slab_list(Engine *engine, const unsigned int id) {
     return true;
 }
 
-void *Slabs::memory_allocate(Engine *engine, size_t size) {
+void *Slabs::memory_allocate(size_t size) {
     void *ret;
 
     if (this->mem_base == NULL) {
