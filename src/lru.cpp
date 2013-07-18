@@ -1,11 +1,11 @@
-#include "items.hpp"
+#include "lru.hpp"
 
 
-Items::Items(Engine *engine) {
+LRU::LRU(Engine *engine) {
     this->engine = engine;
 }
 
-hash_item *Items::item_alloc(const void *key, size_t nkey,
+hash_item *LRU::item_alloc(const void *key, size_t nkey,
                                int flags,/*rel_time_t exptime, */
                                int nbytes) {
     hash_item *it;
@@ -16,7 +16,7 @@ hash_item *Items::item_alloc(const void *key, size_t nkey,
     return it;
 }
 
-hash_item *Items::item_get(const void *key, const size_t nkey) {
+hash_item *LRU::item_get(const void *key, const size_t nkey) {
     hash_item *it;
 
     this->engine->lock_cache();
@@ -25,19 +25,19 @@ hash_item *Items::item_get(const void *key, const size_t nkey) {
     return it;
 }
 
-void Items::item_release(hash_item *it) {
+void LRU::item_release(hash_item *it) {
     this->engine->lock_cache();
     do_item_release(item);
     this->engine->unlock_cache();
 }
 
-void Items::item_unlink(hash_item *it) {
+void LRU::item_unlink(hash_item *it) {
     this->engine->lock_cache();
     do_item_unlink(item);
     this->engine->unlock_cache();
 }
 
-ENGINE_ERROR_CODE Items::store_item(hash_item *it,
+ENGINE_ERROR_CODE LRU::store_item(hash_item *it,
                                      uint64_t cas,
                                      ENGINE_STORE_OPERATION operation,
                                      const void *cookie) {
@@ -51,7 +51,7 @@ ENGINE_ERROR_CODE Items::store_item(hash_item *it,
 
 
 
-void Items::item_link_q(hash_item *it) {
+void LRU::item_link_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -73,7 +73,7 @@ void Items::item_link_q(hash_item *it) {
     this->sizes[it->slabs_clsid]++;
 }
 
-void Items::item_unlink_q(hash_item *it) {
+void LRU::item_unlink_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -99,7 +99,7 @@ void Items::item_unlink_q(hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
+hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
                                   const int flags, const rel_time_t exptime,
                                   const int nbytes) {
     hash_item *it = NULL;
@@ -171,7 +171,7 @@ hash_item *Items::do_item_alloc(const void *key, const size_t nkey,
     return it;
 }
 
-hash_item *Items::do_item_get(const char *key, const size_t nkey) {
+hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
     rel_time_t current_time = this->engine-> server.core->get_current_time(); // ?
     hash_item *it;
 
@@ -192,7 +192,7 @@ hash_item *Items::do_item_get(const char *key, const size_t nkey) {
     return it;
 }
 
-int Items::do_item_link(hash_item *it) {
+int LRU::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
     assert(it->nbytes < (1024 * 1024)); // 1 MB max size
     it->iflag |= ITEM_LINKED;
@@ -206,7 +206,7 @@ int Items::do_item_link(hash_item *it) {
     return 1;
 }
 
-void Items::do_item_unlink(hash_item *it) {
+void LRU::do_item_unlink(hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != 0) {
         it->iflag &= ~ITEM_LINKED;
         this->engine->assoc->assoc_delete(hash(item_get_key(it), it->nkey),
@@ -217,14 +217,14 @@ void Items::do_item_unlink(hash_item *it) {
     }
 }
 
-void Items::do_item_release(hash_item *it) {
+void LRU::do_item_release(hash_item *it) {
     if (it->refcount)
         it->refcount--;
     if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == 0)
         this->item_free(it);
 }
 
-void Items::do_item_update(hash_item *it) {
+void LRU::do_item_update(hash_item *it) {
     rel_time_t current_time = this->engine->server.core->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
@@ -238,7 +238,7 @@ void Items::do_item_update(hash_item *it) {
     }
 }
 
-int Items::do_item_replace(hash_item *it, hash_item *new_it) {
+int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
 
     assert((it->iflag & ITEM_SLABBED) == 0);
 
@@ -246,7 +246,7 @@ int Items::do_item_replace(hash_item *it, hash_item *new_it) {
     return this->do_item_link(new_it);
 }
 
-void Items::item_free(hash_item *it) {
+void LRU::item_free(hash_item *it) {
     size_t ntotal = ITEM_ntotal(engine, it); /// ????
 
     assert((it->iflag & ITEM_LINKED) == 0);

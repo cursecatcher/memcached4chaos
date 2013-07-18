@@ -19,7 +19,7 @@ typedef struct _hash_item {
 } hash_item;
 
 
-class Items {
+class LRU {
 private:
     Engine* engine;
 
@@ -42,7 +42,7 @@ private:
     void item_free(hash_item *it);
 
 public:
-    Items(Engine *engine);
+    LRU(Engine *engine);
 
     /** Allocate and initialize a new item structure
      * @param engine handle to the storage engine
