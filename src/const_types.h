@@ -1,8 +1,7 @@
-#pragma once
+//#pragma once
 
-#include <sys/types.h>
-#include <cstddef>
-#include <cstdint>
+#include <inttypes.h> //definition of uint*_t
+
 
 #define POWER_SMALLEST 1
 #define POWER_LARGEST  200
