@@ -5,3 +5,4 @@ TO DO LIST:
 - Verificare se ITEM_ntotal necessiti del parametro Engine* (items.cpp)
 - Definire script di configurazione per verificare se la macchina è 
   LITTLE o BIG ENDIAN 
+- convertire hash_item (struct) in classe ???
