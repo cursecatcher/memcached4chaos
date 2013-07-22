@@ -1,6 +1,14 @@
+#pragma once
+
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <pthread.h>
+
+#include "const_types.h"
+#include "engine.hpp"
 
 /* powers-of-N allocation structures */
-
 typedef struct {
     unsigned int size;      // sizes of items
     unsigned int perslab;   // how many items per slab

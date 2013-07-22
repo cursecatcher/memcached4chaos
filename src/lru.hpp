@@ -1,3 +1,5 @@
+#pragma once
+
 #include "const_types.h"
 #include "engine.hpp"
 
