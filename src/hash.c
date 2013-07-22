@@ -1,3 +1,4 @@
+#include "hash.h"
 /** Hash table
  *
  * The hash function used here is by Bob Jenkins, 1996:
@@ -17,8 +18,6 @@
 # define HASH_LITTLE_ENDIAN 1
 # define HASH_BIG_ENDIAN 0
 #endif
-
-#define rot(x,k) (((x)<<(k)) ^ ((x)>>(32-(k))))
 
 /**
 -------------------------------------------------------------------------------
@@ -64,6 +63,8 @@ on, and rotates are much kinder to the top and bottom bits, so I used
 rotates.
 -------------------------------------------------------------------------------
 */
+#define rot(x,k) (((x)<<(k)) ^ ((x)>>(32-(k))))
+
 #define mix(a,b,c) \
 { \
   a -= c;  a ^= rot(c, 4);  c += b; \
@@ -122,7 +123,7 @@ uint32_t hash(const void *key, /* the key to hash */
     u.ptr = key;
 
     if (HASH_LITTLE_ENDIAN && ((u.i & 0x3) == 0)) {
-        const uint32_t *k = key;
+        const uint32_t *k = (uint32_t*) key;
 
         /*------ all but last block: aligned reads and affect 32 bits of (a,b,c) */
         for (; length > 12; length -= 12, k += 3) {
@@ -159,7 +160,7 @@ uint32_t hash(const void *key, /* the key to hash */
         }
     }
     else if (HASH_LITTLE_ENDIAN && ((u.i & 0x1) == 0)) {
-        const uint16_t *k = key; /* read 16-bit chunks */
+        const uint16_t *k = (uint16_t*) key; /* read 16-bit chunks */
 
         /*--------------- all but last block: aligned reads and different mixing */
         for (; length > 12; length -= 12, k += 6) {
@@ -198,7 +199,7 @@ uint32_t hash(const void *key, /* the key to hash */
             case 0 : return c;  /* zero length strings require no mixing */
         }
     } else {                        /* need to read the key one byte at a time */
-        const uint8_t *k = key;
+        const uint8_t *k = (uint8_t*) key;
 
         /*--------------- all but the last block: affect some 32 bits of (a,b,c) */
         for (; length > 12; length -= 12, k += 12) {
