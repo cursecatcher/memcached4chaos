@@ -25,3 +25,7 @@ void items::item_set_cas(const hash_item* item, const uint64_t val) {
     if (item->iflag & ITEM_WITH_CAS)
         *(uint64_t*)(item + 1) = val;
 }
+
+size_t items::ITEM_ntotal(const hash_item *item, bool use_cas) {
+    return (sizeof(*item) + item->nkey + item->nbytes) + (use_cas ? sizeof(uint64_t) : 0);
+}
