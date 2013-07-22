@@ -5,8 +5,12 @@
 #include <cstring>
 #include <pthread.h>
 
-#include "const_types.h"
 #include "engine.hpp"
+#include "const_types.h"
+
+/** previous declarations **/
+class Engine;
+class Slabs;
 
 /* powers-of-N allocation structures */
 typedef struct {

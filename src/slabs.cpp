@@ -141,7 +141,7 @@ void Slabs::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
     if (p->sl_curr == p->sl_total) {
         // need more space on the free list
         int new_size = (p->sl_total != 0) ? p->sl_total * 2 : 16; // 16 is arbitrary
-        void **new_slots = realloc(p->slots, new_size * sizeof(void *));
+        void **new_slots = (void **) realloc(p->slots, new_size * sizeof(void *));
         if (new_slots == NULL)
             return;
         p->slots = new_slots;
@@ -152,13 +152,13 @@ void Slabs::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
 }
 
 int Slabs::do_slabs_newslab(const unsigned int id) {
-    slabclass_t *p = this->slabclass[id];
+    slabclass_t *p = &this->slabclass[id];
     int len = p->size * p->perslab;
     void *ptr;
 
     if ((this->mem_limit && this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
         (!this->grow_slab_list(id)) ||
-        ((ptr = this->memory_allocate((size_t) len)) == NULL) {
+        ((ptr = this->memory_allocate((size_t) len)) == NULL)) {
 
         return 0;
     }
@@ -183,7 +183,7 @@ bool Slabs::grow_slab_list(const unsigned int id) {
         if (new_list == NULL)
             return false;
         p->list_size = new_size;
-        p->slab_list = new_list;
+        p->slab_list = (void **) new_list;
     }
 
     return true;
