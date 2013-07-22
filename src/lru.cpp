@@ -11,7 +11,7 @@ hash_item *LRU::item_alloc(const void *key, size_t nkey,
     hash_item *it;
 
     this->engine->lock_cache();
-    it = do_item_alloc(key, nkey, flags, /*exptime,*/ nbytes);
+    it = this->do_item_alloc(key, nkey, flags, /*exptime,*/ nbytes);
     this->engine->unlock_cache();
     return it;
 }
@@ -20,20 +20,20 @@ hash_item *LRU::item_get(const void *key, const size_t nkey) {
     hash_item *it;
 
     this->engine->lock_cache();
-    it = do_item_get(key, nkey);
+    it = this->do_item_get(key, nkey);
     this->engine->unlock_cache();
     return it;
 }
 
 void LRU::item_release(hash_item *it) {
     this->engine->lock_cache();
-    do_item_release(item);
+    this->do_item_release(item);
     this->engine->unlock_cache();
 }
 
 void LRU::item_unlink(hash_item *it) {
     this->engine->lock_cache();
-    do_item_unlink(item);
+    this->do_item_unlink(item);
     this->engine->unlock_cache();
 }
 
@@ -44,7 +44,7 @@ ENGINE_ERROR_CODE LRU::store_item(hash_item *it,
     ENGINE_ERROR_CODE ret;
 
     this->engine->lock_cache();
-    ret = do_store_item(item, cas, operation, cookie);
+    ret = this->do_store_item(item, cas, operation, cookie);
     this->engine->unlock_cache();
     return ret;
 }
@@ -119,7 +119,7 @@ hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
 
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
-        if (this->engine->config.evict_to_free == 0)
+        if (this->engine->config.evict_to_free)
             return NULL;
 
         /* try to get one off the right LRU
