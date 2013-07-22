@@ -6,3 +6,5 @@ TO DO LIST:
 - Definire script di configurazione per verificare se la macchina è 
   LITTLE o BIG ENDIAN 
 - convertire hash_item (struct) in classe ???
+- verificare in items_op::ITEM_ntotal se si può usare item->iflag & ITEM_WITH_CAS
+
