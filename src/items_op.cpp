@@ -9,7 +9,7 @@ char* items::item_get_key(const hash_item* item) {
     return key;
 }
 
-void* items::item_get_data(const hash_item* item) {
+char* items::item_get_data(const hash_item* item) {
     return ((char *) items::item_get_key(item)) + item->nkey;
 }
 
@@ -28,4 +28,9 @@ void items::item_set_cas(const hash_item* item, const uint64_t val) {
 
 size_t items::ITEM_ntotal(const hash_item *item, bool use_cas) {
     return (sizeof(*item) + item->nkey + item->nbytes) + (use_cas ? sizeof(uint64_t) : 0);
+}
+
+uint64_t get_cas_id(void) {
+    static uint64_t cas_id = 0;
+    return ++cas_id;
 }

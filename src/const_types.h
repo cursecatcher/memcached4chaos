@@ -1,14 +1,34 @@
-#ifndef __CONST_TYPES_H__
-#define __CONST_TYPES_H__
+#ifndef CONST_TYPES_H
+#define CONST_TYPES_H
 
+#include <cstddef> //definition of size_t
 #include <inttypes.h> //definition of uint*_t
 
-
+/* slabs defines */
 #define POWER_SMALLEST 1
 #define POWER_LARGEST  200
 #define CHUNK_ALIGN_BYTES 8
 #define DONT_PREALLOC_SLABS
 #define MAX_NUMBER_OF_SLAB_CLASSES (POWER_LARGEST + 1)
+
+/** How long an object can reasonably be assumed to be locked before
+    harvesting it on a low memory condition. */
+#define TAIL_REPAIR_TIME (3 * 3600)
+
+/** We only reposition items in the LRU queue if they haven't been repositioned
+ * in this many seconds.
+ * That saves us from churning on frequently-accessed items. */
+#define ITEM_UPDATE_INTERVAL 60
+
+/** To avoid scanning through the complete cache in some circumstances we'll
+ * just give up and return an error after inspecting a fixed number of objects. */
+#define SEARCH_ITEMS 50 //static const int search_items = 50;
+
+/* Flags */
+#define ITEM_WITH_CAS 1
+#define ITEM_LINKED (1<<8)
+#define ITEM_SLABBED (2<<8)
+
 
 typedef uint32_t rel_time_t;
 
