@@ -1,7 +1,15 @@
-#pragma once
+#ifndef LRU_HPP
+#define LRU_HPP
+//#pragma once
 
-#include "const_types.h"
+#include <cassert>
+#include "hash.h"
+#include "items_op.hpp"
 #include "engine.hpp"
+
+/** previous declarations **/
+class Assoc;
+class Engine;
 
 
 class LRU {
@@ -15,9 +23,9 @@ private:
 
     void item_link_q(hash_item *it);
     void item_unlink_q(hash_item *it);
-    hash_item *do_item_alloc(const void *key, const size_t nkey,
-                              const int flags,/*, const rel_time_t exptime,*/
-                              const int nbytes);
+    hash_item *do_item_alloc(const char *key, const size_t nkey,
+                             const int flags,/*, const rel_time_t exptime,*/
+                             const int nbytes);
     hash_item *do_item_get(const char *key, const size_t nkey);
     int do_item_link(hash_item *it);
     void do_item_unlink(hash_item *it);
@@ -25,6 +33,8 @@ private:
     void do_item_update(hash_item *it);
     int do_item_replace(hash_item *it, hash_item *new_it);
     void item_free(hash_item *it);
+    ENGINE_ERROR_CODE do_store_item(hash_item *it, uint64_t *cas,
+                                    ENGINE_STORE_OPERATION operation);
 
 public:
     LRU(Engine *engine);
@@ -37,9 +47,9 @@ public:
      * @param exptime when the object should expire ***REMOVED***
      * @param nbytes the number of bytes in the body for the item
      * @return a pointer to an item on success NULL otherwise */
-    hash_item *item_alloc(const void *key, size_t nkey,
-                           int flags,/*rel_time_t exptime, */
-                           int nbytes);
+    hash_item *item_alloc(const char *key, size_t nkey,
+                          int flags,/*rel_time_t exptime, */
+                          int nbytes);
 
     /** Get an item from the cache
      *
@@ -47,7 +57,7 @@ public:
      * @param key the key for the item to get
      * @param nkey the number of bytes in the key
      * @return pointer to the item if it exists or NULL otherwise */
-    hash_item *item_get(const void *key, const size_t nkey);
+    hash_item *item_get(const char *key, const size_t nkey);
 
     /** Release our reference to the current item
      * @param engine handle to the storage engine
@@ -68,8 +78,7 @@ public:
      *
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
-    ENGINE_ERROR_CODE store_item(hash_item *it,
-                                 uint64_t cas,
-                                 ENGINE_STORE_OPERATION operation,
-                                 const void *cookie);
+    ENGINE_ERROR_CODE store_item(hash_item *it, uint64_t *cas,
+                                 ENGINE_STORE_OPERATION operation);
 };
+#endif

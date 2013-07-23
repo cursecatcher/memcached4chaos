@@ -5,9 +5,9 @@ LRU::LRU(Engine *engine) {
     this->engine = engine;
 }
 
-hash_item *LRU::item_alloc(const void *key, size_t nkey,
-                               int flags,/*rel_time_t exptime, */
-                               int nbytes) {
+hash_item *LRU::item_alloc(const char *key, size_t nkey,
+                           int flags,/*rel_time_t exptime, */
+                           int nbytes) {
     hash_item *it;
 
     this->engine->lock_cache();
@@ -16,7 +16,7 @@ hash_item *LRU::item_alloc(const void *key, size_t nkey,
     return it;
 }
 
-hash_item *LRU::item_get(const void *key, const size_t nkey) {
+hash_item *LRU::item_get(const char *key, const size_t nkey) {
     hash_item *it;
 
     this->engine->lock_cache();
@@ -27,24 +27,22 @@ hash_item *LRU::item_get(const void *key, const size_t nkey) {
 
 void LRU::item_release(hash_item *it) {
     this->engine->lock_cache();
-    this->do_item_release(item);
+    this->do_item_release(it);
     this->engine->unlock_cache();
 }
 
 void LRU::item_unlink(hash_item *it) {
     this->engine->lock_cache();
-    this->do_item_unlink(item);
+    this->do_item_unlink(it);
     this->engine->unlock_cache();
 }
 
-ENGINE_ERROR_CODE LRU::store_item(hash_item *it,
-                                     uint64_t cas,
-                                     ENGINE_STORE_OPERATION operation,
-                                     const void *cookie) {
+ENGINE_ERROR_CODE LRU::store_item(hash_item *it, uint64_t *cas,
+                                  ENGINE_STORE_OPERATION operation) {
     ENGINE_ERROR_CODE ret;
 
     this->engine->lock_cache();
-    ret = this->do_store_item(item, cas, operation, cookie);
+    ret = this->do_store_item(it, cas, operation);
     this->engine->unlock_cache();
     return ret;
 }
@@ -61,7 +59,7 @@ void LRU::item_link_q(hash_item *it) {
     tail = &this->tails[it->slabs_clsid];
 
     assert(it != *head);
-    assert((*head && *tail) || (*head == NULL && *tail == NULL);
+    assert((*head && *tail) || (*head == NULL && *tail == NULL));
 
     it->prev = NULL;
     it->next = *head;
@@ -99,9 +97,9 @@ void LRU::item_unlink_q(hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
-                                  const int flags, const rel_time_t exptime,
-                                  const int nbytes) {
+hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
+                               const int flags, /*const rel_time_t exptime,*/
+                               const int nbytes) {
     hash_item *it = NULL;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
@@ -112,10 +110,9 @@ hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
     if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
         return 0;
 
-    if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
+    if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
         /* Could not find an expired item at the tail, and memory allocation
          * failed. Try to evict some items! */
-        tries = search_items; // da definire magari
 
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
@@ -129,6 +126,7 @@ hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
         if (this->tails[id] == NULL)
             return NULL;
 
+        int tries = SEARCH_ITEMS;
         hash_item *search;
 
         for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
@@ -137,21 +135,21 @@ hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
                 break;
             }
 
-        if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
+        if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
             /* Last ditch effort. There is a very rare bug which causes
              * refcount leaks. We've fixed most of them, but it still happens,
              * and it may happen in the future.
              * We can reasonably assume no item can stay locked for more than
              * three hours, so if we find one in the tail which is that old,
              * free it anyway. */
-             tries = search_items;
+             tries = SEARCH_ITEMS;
              for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev) {
                  search->refcount = 0; /****/
                  this->do_item_unlink(search);
                  break;
              }
 
-             if ((it = this->engine->slabs->slabs_alloc(ntotal, id)) == NULL)
+             if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL)
                 return NULL;
         }
     }
@@ -166,13 +164,13 @@ hash_item *LRU::do_item_alloc(const void *key, const size_t nkey,
     it->nkey = nkey;
     it->nbytes = nbytes;
     it->flags = flags;
-    memcpy((void *) item_get_key(it), key, nkey);
+    memcpy((void *) items::item_get_key(it), key, nkey);
 
     return it;
 }
 
 hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
-    rel_time_t current_time = this->engine-> server.core->get_current_time(); // ?
+    rel_time_t current_time = this->engine->get_current_time(); // ?
     hash_item *it;
 
     if (it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey)) {
@@ -196,11 +194,11 @@ int LRU::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
     assert(it->nbytes < (1024 * 1024)); // 1 MB max size
     it->iflag |= ITEM_LINKED;
-    it->time = this->engine->server.core->get_current_time(); //globals?
-    this->engine->assoc->assoc_insert(hash(item_get_key(it), it->nkey), it);
+    it->time = this->engine->get_current_time();
+    this->engine->assoc->assoc_insert(hash(items::item_get_key(it), it->nkey), it);
 
     /* Allocate a new CAS ID on link. */
-    item_set_cas(NULL, NULL, it, get_cas_id()); // BOH
+    items::item_set_cas(it, items::get_cas_id()); // BOH
     this->item_link_q(it);
 
     return 1;
@@ -209,8 +207,8 @@ int LRU::do_item_link(hash_item *it) {
 void LRU::do_item_unlink(hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != 0) {
         it->iflag &= ~ITEM_LINKED;
-        this->engine->assoc->assoc_delete(hash(item_get_key(it), it->nkey),
-                                    item_get_key(it), it->nkey);
+        char *key = items::item_get_key(it);
+        this->engine->assoc->assoc_delete(hash(key, it->nkey), key, it->nkey);
         this->item_unlink_q(it);
         if (it->refcount == 0)
             this->item_free(it);
@@ -225,7 +223,7 @@ void LRU::do_item_release(hash_item *it) {
 }
 
 void LRU::do_item_update(hash_item *it) {
-    rel_time_t current_time = this->engine->server.core->get_current_time();
+    rel_time_t current_time = this->engine->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->iflag & ITEM_SLABBED) == 0);
@@ -239,7 +237,6 @@ void LRU::do_item_update(hash_item *it) {
 }
 
 int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
-
     assert((it->iflag & ITEM_SLABBED) == 0);
 
     this->do_item_unlink(it);
@@ -247,7 +244,7 @@ int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
 }
 
 void LRU::item_free(hash_item *it) {
-    size_t ntotal = ITEM_ntotal(engine, it); /// ????
+    size_t ntotal = items::ITEM_ntotal(it, engine->config.use_cas);
 
     assert((it->iflag & ITEM_LINKED) == 0);
     assert(it != this->heads[it->slabs_clsid]);
@@ -261,4 +258,95 @@ void LRU::item_free(hash_item *it) {
     this->engine->slabs->slabs_free(it, ntotal, clsid);
 }
 
+ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it, uint64_t *cas,
+                                     ENGINE_STORE_OPERATION operation) {
 
+    const char *key = items::item_get_key(it);
+    hash_item *old_it = this->do_item_get(key, it->nkey);
+    hash_item *new_it = NULL;
+    ENGINE_ERROR_CODE stored = ENGINE_NOT_STORED;
+
+    if (old_it != NULL && operation == OPERATION_ADD) {
+        // add only adds a nonexistent item, but promote to head of LRU
+        this->do_item_update(old_it);
+    }
+    else if (old_it == NULL && (operation == OPERATION_REPLACE ||
+                                 operation == OPERATION_APPEND ||
+                                 operation == OPERATION_PREPEND)) {
+        // replace only replaces an existing value; don't store
+    }
+    else if (operation == OPERATION_CAS) {
+        // validate cas operation
+        if (old_it == NULL) {
+            stored = ENGINE_KEY_ENOENT; // LRU expired
+        }
+        else if (items::item_get_cas(it) == items::item_get_cas(old_it)) {
+            /* cas validates
+             * it and old_it may belong to different classes.
+             * I'm updating the stats for the one that's getting pushed out */
+            this->do_item_replace(old_it, it);
+            stored = ENGINE_SUCCESS;
+        }
+        else {
+            stored = ENGINE_KEY_EEXISTS;
+        }
+    }
+    else {
+        /* append - combine new and old record into single one.
+         * Here it's atomic and thread-safe */
+        if (operation == OPERATION_APPEND || operation == OPERATION_PREPEND) {
+            // validate cas
+            if (items::item_get_cas(it) != 0) {
+                // cas much be equal
+                if (items::item_get_cas(it) != items::item_get_cas(old_it))
+                    stored = ENGINE_KEY_EEXISTS;
+            }
+
+            if (stored == ENGINE_NOT_STORED) {
+                //we have it and old_it here - alloc memory to hold both
+                new_it = this->do_item_alloc(key, it->nkey, old_it->flags,
+                                             it->nbytes + old_it->nbytes);
+                if (new_it == NULL) {
+                    // out of memory
+                    if (old_it != NULL)
+                        this->do_item_release(old_it);
+
+                    return ENGINE_NOT_STORED;
+                }
+                // copy data from it and old_it to new_it
+                if (operation == OPERATION_APPEND) {
+                    memcpy(items::item_get_data(new_it), items::item_get_data(old_it), old_it->nbytes);
+                    memcpy(items::item_get_data(new_it) + old_it->nbytes, items::item_get_data(it), it->nbytes);
+                }
+                else {
+                    // OPERATION_PREPEND
+                    memcpy(items::item_get_data(new_it), items::item_get_data(it), it->nbytes);
+                    memcpy(items::item_get_data(new_it) + it->nbytes, items::item_get_data(old_it), old_it->nbytes);
+                }
+
+                it = new_it;
+            }
+        }
+
+        if (stored == ENGINE_NOT_STORED) {
+            if (old_it != NULL)
+                this->do_item_replace(old_it, it);
+            else
+                this->do_item_link(it);
+
+            *cas = items::item_get_cas(it);
+            stored = ENGINE_SUCCESS;
+        }
+    }
+
+    if (old_it != NULL)
+        this->do_item_release(old_it); // release our reference
+
+    if (new_it != NULL)
+        this->do_item_release(new_it);
+
+    if (stored == ENGINE_SUCCESS)
+        *cas = items::item_get_cas(it);
+
+    return stored;
+}
