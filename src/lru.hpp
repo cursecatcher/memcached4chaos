@@ -32,7 +32,7 @@ private:
     void do_item_update(hash_item *it);
     int do_item_replace(hash_item *it, hash_item *new_it);
     void item_free(hash_item *it);
-    int do_store_item(hash_item *it);
+    ENGINE_ERROR_CODE do_store_item(hash_item *it);
 
 public:
     LRU(Engine *engine);
@@ -75,6 +75,6 @@ public:
      *
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
-    int store_item(hash_item *it);
+    ENGINE_ERROR_CODE store_item(hash_item *it);
 };
 #endif

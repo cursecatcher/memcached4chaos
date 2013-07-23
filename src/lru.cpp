@@ -37,7 +37,7 @@ void LRU::item_unlink(hash_item *it) {
     this->engine->unlock_cache();
 }
 
-int LRU::store_item(hash_item *it) {
+ENGINE_ERROR_CODE LRU::store_item(hash_item *it) {
     int ret;
 
     this->engine->lock_cache();
@@ -257,7 +257,7 @@ void LRU::item_free(hash_item *it) {
     this->engine->slabs->slabs_free(it, ntotal, clsid);
 }
 
-int LRU::do_store_item(hash_item *it) {
+ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it) {
     hash_item *old_it = this->do_item_get(items::item_get_key(it), it->nkey);
 
     if (old_it != NULL) {
@@ -268,5 +268,5 @@ int LRU::do_store_item(hash_item *it) {
         this->do_item_link(it);
     }
 
-    return 1;
+    return ENGINE_SUCCESS;
 }
