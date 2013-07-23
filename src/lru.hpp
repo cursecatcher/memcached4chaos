@@ -33,8 +33,7 @@ private:
     void do_item_update(hash_item *it);
     int do_item_replace(hash_item *it, hash_item *new_it);
     void item_free(hash_item *it);
-    ENGINE_ERROR_CODE do_store_item(hash_item *it, uint64_t *cas,
-                                    ENGINE_STORE_OPERATION operation);
+    ENGINE_ERROR_CODE do_store_item(hash_item *it);
 
 public:
     LRU(Engine *engine);
@@ -73,12 +72,10 @@ public:
      * @param engine handle to the storage engine
      * @param item the item to store
      * @param cas the cas value (OUT)
-     * @param operation what kind of store operation is this (ADD/SET etc)
      * @return ENGINE_SUCCESS on success
      *
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
-    ENGINE_ERROR_CODE store_item(hash_item *it, uint64_t *cas,
-                                 ENGINE_STORE_OPERATION operation);
+    ENGINE_ERROR_CODE store_item(hash_item *it);
 };
 #endif

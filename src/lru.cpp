@@ -37,12 +37,11 @@ void LRU::item_unlink(hash_item *it) {
     this->engine->unlock_cache();
 }
 
-ENGINE_ERROR_CODE LRU::store_item(hash_item *it, uint64_t *cas,
-                                  ENGINE_STORE_OPERATION operation) {
+ENGINE_ERROR_CODE LRU::store_item(hash_item *it) {
     ENGINE_ERROR_CODE ret;
 
     this->engine->lock_cache();
-    ret = this->do_store_item(it, cas, operation);
+    ret = this->do_store_item(it);
     this->engine->unlock_cache();
     return ret;
 }
@@ -258,95 +257,16 @@ void LRU::item_free(hash_item *it) {
     this->engine->slabs->slabs_free(it, ntotal, clsid);
 }
 
-ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it, uint64_t *cas,
-                                     ENGINE_STORE_OPERATION operation) {
+ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it) {
+    hash_item *old_it = this->do_item_get(items::item_get_key(it), it->nkey);
 
-    const char *key = items::item_get_key(it);
-    hash_item *old_it = this->do_item_get(key, it->nkey);
-    hash_item *new_it = NULL;
-    ENGINE_ERROR_CODE stored = ENGINE_NOT_STORED;
-
-    if (old_it != NULL && operation == OPERATION_ADD) {
-        // add only adds a nonexistent item, but promote to head of LRU
-        this->do_item_update(old_it);
-    }
-    else if (old_it == NULL && (operation == OPERATION_REPLACE ||
-                                 operation == OPERATION_APPEND ||
-                                 operation == OPERATION_PREPEND)) {
-        // replace only replaces an existing value; don't store
-    }
-    else if (operation == OPERATION_CAS) {
-        // validate cas operation
-        if (old_it == NULL) {
-            stored = ENGINE_KEY_ENOENT; // LRU expired
-        }
-        else if (items::item_get_cas(it) == items::item_get_cas(old_it)) {
-            /* cas validates
-             * it and old_it may belong to different classes.
-             * I'm updating the stats for the one that's getting pushed out */
-            this->do_item_replace(old_it, it);
-            stored = ENGINE_SUCCESS;
-        }
-        else {
-            stored = ENGINE_KEY_EEXISTS;
-        }
+    if (old_it != NULL) {
+        this->do_item_replace(old_it, it);
+        this->do_item_release(old_it);
     }
     else {
-        /* append - combine new and old record into single one.
-         * Here it's atomic and thread-safe */
-        if (operation == OPERATION_APPEND || operation == OPERATION_PREPEND) {
-            // validate cas
-            if (items::item_get_cas(it) != 0) {
-                // cas much be equal
-                if (items::item_get_cas(it) != items::item_get_cas(old_it))
-                    stored = ENGINE_KEY_EEXISTS;
-            }
-
-            if (stored == ENGINE_NOT_STORED) {
-                //we have it and old_it here - alloc memory to hold both
-                new_it = this->do_item_alloc(key, it->nkey, old_it->flags,
-                                             it->nbytes + old_it->nbytes);
-                if (new_it == NULL) {
-                    // out of memory
-                    if (old_it != NULL)
-                        this->do_item_release(old_it);
-
-                    return ENGINE_NOT_STORED;
-                }
-                // copy data from it and old_it to new_it
-                if (operation == OPERATION_APPEND) {
-                    memcpy(items::item_get_data(new_it), items::item_get_data(old_it), old_it->nbytes);
-                    memcpy(items::item_get_data(new_it) + old_it->nbytes, items::item_get_data(it), it->nbytes);
-                }
-                else {
-                    // OPERATION_PREPEND
-                    memcpy(items::item_get_data(new_it), items::item_get_data(it), it->nbytes);
-                    memcpy(items::item_get_data(new_it) + it->nbytes, items::item_get_data(old_it), old_it->nbytes);
-                }
-
-                it = new_it;
-            }
-        }
-
-        if (stored == ENGINE_NOT_STORED) {
-            if (old_it != NULL)
-                this->do_item_replace(old_it, it);
-            else
-                this->do_item_link(it);
-
-            *cas = items::item_get_cas(it);
-            stored = ENGINE_SUCCESS;
-        }
+        this->do_item_link(it);
     }
 
-    if (old_it != NULL)
-        this->do_item_release(old_it); // release our reference
-
-    if (new_it != NULL)
-        this->do_item_release(new_it);
-
-    if (stored == ENGINE_SUCCESS)
-        *cas = items::item_get_cas(it);
-
-    return stored;
+    return ENGINE_SUCCESS;
 }
