@@ -1,8 +1,12 @@
-#pragma once
+#ifndef ASSOC_HPP
+#define ASSOC_HPP
+//#pragma once
 
 #include "const_types.h"
 #include "engine.hpp"
 
+/** previous declarations **/
+class Engine;
 
 
 class Assoc {
@@ -26,6 +30,8 @@ private:
      * Ranges from 0 .. hashsize(hashpower - 1) - 1. */
     unsigned int expand_bucket;
 
+    int hash_bulk_move;
+
 
     void assoc_expand();
     hash_item** hashitem_before(uint32_t hash, const char *key, const size_t nkey);
@@ -42,3 +48,4 @@ public:
 
 
 };
+#endif
