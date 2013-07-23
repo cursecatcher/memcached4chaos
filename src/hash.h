@@ -1,5 +1,5 @@
-#ifndef __HASH_H__
-#define __HASH_H__
+#ifndef HASH_H
+#define HASH_H
 
 #include <inttypes.h> //declaration of uint*_t
 #include <stddef.h> //declaration of size_t
