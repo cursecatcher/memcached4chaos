@@ -1,9 +1,15 @@
-#pragma once
+#ifndef ENGINE_HPP
+#define ENGINE_HPP
 
 #include "const_types.h"
 #include "slabs.hpp"
 #include "assoc.hpp"
 #include "lru.hpp"
+
+/** previous declarations **/
+class Assoc;
+class LRU;
+class Slabs;
 
 
 struct config {
@@ -24,18 +30,19 @@ struct config {
 
 class Engine {
 private:
-    Assoc *assoc;
-    Slabs *slabs;
-    LRU *lru;
-
     pthread_mutex_t cache_lock;
 
 
 public:
+    Assoc *assoc;
+    Slabs *slabs;
+    LRU *lru;
     struct config config; // public member
 
     Engine();
 
     void lock_cache();
     void unlock_cache();
+    rel_time_t get_current_time() { return 0; }
 };
+#endif
