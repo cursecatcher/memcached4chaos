@@ -1,7 +1,7 @@
 NAME = memcached
 CC = g++
 LIBS = -lpthread
-FLAGS =
+FLAGS = -Wall
 
 #all: engine.o slabs.o assoc.o lru.o hash.o items_op.o const_types.h
 #	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
