@@ -70,13 +70,4 @@ typedef enum {
     ENGINE_ERANGE      = 0x0e, /**< Value outside legal range */
     ENGINE_FAILED      = 0xff  /**< Generic failue. */
 } ENGINE_ERROR_CODE;
-
-typedef enum {
-    OPERATION_ADD = 1, /**< Store with add semantics */
-    OPERATION_SET,     /**< Store with set semantics */
-    OPERATION_REPLACE, /**< Store with replace semantics */
-    OPERATION_APPEND,  /**< Store with append semantics */
-    OPERATION_PREPEND, /**< Store with prepend semantics */
-    OPERATION_CAS      /**< Store with set semantics. */
-} ENGINE_STORE_OPERATION;
 #endif
