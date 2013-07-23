@@ -42,7 +42,7 @@ private:
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
     size_t mem_malloced;
-    int power_largest;
+    unsigned int power_largest;
 
     void *mem_base;
     void *mem_current;

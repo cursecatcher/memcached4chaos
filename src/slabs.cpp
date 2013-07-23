@@ -51,7 +51,7 @@ Slabs::Slabs(Engine *engine, const size_t limit, const double factor, const bool
 }
 
 unsigned int Slabs::slabs_clsid(const size_t size) {
-    int res = POWER_SMALLEST;
+    unsigned res = POWER_SMALLEST;
 
     if (size == 0)
         return 0;
