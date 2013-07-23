@@ -30,7 +30,7 @@ size_t items::ITEM_ntotal(const hash_item *item, bool use_cas) {
     return (sizeof(*item) + item->nkey + item->nbytes) + (use_cas ? sizeof(uint64_t) : 0);
 }
 
-uint64_t get_cas_id(void) {
+uint64_t items::get_cas_id(void) {
     static uint64_t cas_id = 0;
     return ++cas_id;
 }
