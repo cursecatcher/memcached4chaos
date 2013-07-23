@@ -37,8 +37,8 @@ void LRU::item_unlink(hash_item *it) {
     this->engine->unlock_cache();
 }
 
-ENGINE_ERROR_CODE LRU::store_item(hash_item *it) {
-    ENGINE_ERROR_CODE ret;
+int LRU::store_item(hash_item *it) {
+    int ret;
 
     this->engine->lock_cache();
     ret = this->do_store_item(it);
@@ -170,9 +170,9 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
 
 hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
     rel_time_t current_time = this->engine->get_current_time(); // ?
-    hash_item *it;
+    hash_item *it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey);
 
-    if (it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey)) {
+    if (it != NULL) {
         if (this->engine->config.oldest_live != 0 &&
             this->engine->config.oldest_live <= current_time &&
             it->time <= this->engine->config.oldest_live) {
@@ -257,7 +257,7 @@ void LRU::item_free(hash_item *it) {
     this->engine->slabs->slabs_free(it, ntotal, clsid);
 }
 
-ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it) {
+int LRU::do_store_item(hash_item *it) {
     hash_item *old_it = this->do_item_get(items::item_get_key(it), it->nkey);
 
     if (old_it != NULL) {
@@ -268,5 +268,5 @@ ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it) {
         this->do_item_link(it);
     }
 
-    return ENGINE_SUCCESS;
+    return 1;
 }
