@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SLABS_HPP
+#define SLABS_HPP
+//#pragma once
 
 #include <cassert>
 #include <cstdlib>
@@ -64,3 +66,4 @@ public:
     void slabs_free(void *ptr, size_t size, unsigned int id);
     void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal);
 };
+#endif
