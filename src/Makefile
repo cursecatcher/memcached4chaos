@@ -3,10 +3,10 @@ CC = g++
 LIBS = -lpthread
 FLAGS = -Wall
 
-#all: engine.o slabs.o assoc.o lru.o hash.o items_op.o const_types.h
-#	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
+all: prova.cpp datacache.o slabs.o assoc.o lru.o hash.o items_op.o const_types.h
+	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
 
-engine.o: engine.cpp engine.hpp
+datacache.o: datacache.cpp datacache.hpp
 	$(CC) -c $^ $(LIBS) $(FLAGS)
 
 slabs.o: slabs.cpp slabs.hpp
