@@ -1,8 +1,14 @@
 #include "lru.hpp"
 
 
-LRU::LRU(Engine *engine) {
+LRU::LRU(DataCache *engine) {
     this->engine = engine;
+    pthread_mutex_init(&this->cache_lock, NULL);
+
+    for (int i = 0; i < POWER_LARGEST; i++) {
+        this->heads[i] = this->tails[i] = NULL;
+        this->sizes[i] = 0;
+    }
 }
 
 hash_item *LRU::item_alloc(const char *key, size_t nkey,
@@ -10,39 +16,39 @@ hash_item *LRU::item_alloc(const char *key, size_t nkey,
                            int nbytes) {
     hash_item *it;
 
-    this->engine->lock_cache();
+    this->lock_cache();
     it = this->do_item_alloc(key, nkey, flags, /*exptime,*/ nbytes);
-    this->engine->unlock_cache();
+    this->unlock_cache();
     return it;
 }
 
 hash_item *LRU::item_get(const char *key, const size_t nkey) {
     hash_item *it;
 
-    this->engine->lock_cache();
+    this->lock_cache();
     it = this->do_item_get(key, nkey);
-    this->engine->unlock_cache();
+    this->unlock_cache();
     return it;
 }
 
 void LRU::item_release(hash_item *it) {
-    this->engine->lock_cache();
+    this->lock_cache();
     this->do_item_release(it);
-    this->engine->unlock_cache();
+    this->unlock_cache();
 }
 
 void LRU::item_unlink(hash_item *it) {
-    this->engine->lock_cache();
+    this->lock_cache();
     this->do_item_unlink(it);
-    this->engine->unlock_cache();
+    this->unlock_cache();
 }
 
 ENGINE_ERROR_CODE LRU::store_item(hash_item *it) {
-    int ret;
+    ENGINE_ERROR_CODE ret;
 
-    this->engine->lock_cache();
+    this->lock_cache();
     ret = this->do_store_item(it);
-    this->engine->unlock_cache();
+    this->unlock_cache();
     return ret;
 }
 

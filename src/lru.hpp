@@ -4,16 +4,17 @@
 #include <cassert>
 #include "hash.h"
 #include "items_op.hpp"
-#include "engine.hpp"
+#include "datacache.hpp"
 
 /** previous declarations **/
 class Assoc;
-class Engine;
+class DataCache;
 
 
 class LRU {
 private:
-    Engine* engine;
+    DataCache* engine;
+    pthread_mutex_t cache_lock;
 
     hash_item *heads[POWER_LARGEST];
     hash_item *tails[POWER_LARGEST];
@@ -35,7 +36,7 @@ private:
     ENGINE_ERROR_CODE do_store_item(hash_item *it);
 
 public:
-    LRU(Engine *engine);
+    LRU(DataCache *engine);
 
     /** Allocate and initialize a new item structure
      * @param engine handle to the storage engine
@@ -76,5 +77,8 @@ public:
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
     ENGINE_ERROR_CODE store_item(hash_item *it);
+
+    void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
+    void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
 };
 #endif
