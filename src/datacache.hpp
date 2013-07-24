@@ -1,10 +1,13 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
+#include <iostream> // test
 #include "const_types.h"
 #include "slabs.hpp"
 #include "assoc.hpp"
 #include "lru.hpp"
+
+using namespace std;
 
 /** previous declarations **/
 class Assoc;
@@ -28,21 +31,19 @@ struct config {
 };
 
 
-class Engine {
-private:
-    pthread_mutex_t cache_lock;
-
-
+class DataCache {
 public:
     Assoc *assoc;
     Slabs *slabs;
     LRU *lru;
     struct config config; // public member
 
-    Engine();
+    DataCache();
 
-    void lock_cache();
-    void unlock_cache();
+    int get_item(const char *key, int32_t &bufflen, void **outbuffer);
+    int store_item(const char *key, const void *inbuffer, int32_t bufflen);
+    int delete_item(const char *key);
+
     rel_time_t get_current_time() { return 0; }
 };
 #endif

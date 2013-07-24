@@ -1,7 +1,7 @@
-#include "engine.hpp"
+#include "datacache.hpp"
 
-Engine::Engine() {
-    pthread_mutex_init(&this->cache_lock, NULL);
+DataCache::DataCache() {
+//    pthread_mutex_init(&this->cache_lock, NULL);
 
     //init config
     this->config.use_cas = true;
@@ -15,21 +15,50 @@ Engine::Engine() {
     this->config.chunk_size = 48;
     this->config.item_size_max = 1024;
 
+    this->assoc = new Assoc(this, this->config.hashpower);
     this->slabs = new Slabs(this,
                              this->config.maxbytes,
                              this->config.factor,
                              this->config.preallocate);
-    this->assoc = new Assoc(this,
-                              this->config.hashpower);
     this->lru = new LRU(this);
 
 }
 
-void Engine::lock_cache() {
-    pthread_mutex_lock(&this->cache_lock);
+int DataCache::get_item(const char *key, int32_t &bufflen, void **outbuffer) {
+    hash_item *it = this->lru->item_get(key, strlen(key));
+
+    cout << "get(" << key << "): " << (it ? "YEP" : "NOPE") << endl;
+
+    if (it) {
+        bufflen = it->nbytes;
+    }
+
+    return it ? 1 : 0;
 }
 
-void Engine::unlock_cache() {
-    pthread_mutex_unlock(&this->cache_lock);
+int DataCache::store_item(const char *key, const void *inbuffer, int32_t bufflen) {
+    hash_item *it = this->lru->item_alloc(key, strlen(key), /*??*/ 0, bufflen);
+
+    cout << "store(" << key << ")" << endl;
+
+    if (it) {
+        this->lru->store_item(it);
+        return 1;
+    }
+
+    return 0;
+}
+
+int DataCache::delete_item(const char *key) {
+    hash_item *it = this->lru->item_get(key, strlen(key));
+
+    cout << "delete(" << key << "): " << (it ? "YEP" : "NOPE") << endl;
+
+    if (it) {
+        this->lru->item_unlink(it);
+        this->lru->item_release(it);
+    }
+
+    return 0;
 }
 
