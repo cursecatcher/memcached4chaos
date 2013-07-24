@@ -7,11 +7,11 @@
 #include <cstring>
 #include <pthread.h>
 
-#include "engine.hpp"
+#include "datacache.hpp"
 #include "const_types.h"
 
 /** previous declarations **/
-class Engine;
+class DataCache;
 class Slabs;
 
 /* powers-of-N allocation structures */
@@ -37,7 +37,7 @@ typedef struct {
 
 class Slabs {
 private:
-    Engine *engine;
+    DataCache *engine;
 
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
@@ -59,7 +59,7 @@ private:
 
 public:
 
-    Slabs(Engine *engine, const size_t limit, const double factor, const bool prealloc);
+    Slabs(DataCache *engine, const size_t limit, const double factor, const bool prealloc);
 
     unsigned int slabs_clsid(const size_t size);
     void *slabs_alloc(const size_t size, unsigned int id);

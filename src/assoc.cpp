@@ -8,7 +8,7 @@
 void* fun_assoc_maintenance_thread(void* arg);
 
 
-Assoc::Assoc(Engine* engine, unsigned int hashpower) {
+Assoc::Assoc(DataCache* engine, unsigned int hashpower) {
     this->engine = engine;
     this->hashpower = hashpower;
     this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
@@ -85,7 +85,7 @@ void Assoc::assoc_maintenance_thread() {
     bool done = false;
 
     do {
-        this->engine->lock_cache();
+        this->engine->lru->lock_cache();
 
         for (int ii = 0; ii < this->hash_bulk_move && this->expanding; ii++) {
             hash_item *it, *next;
@@ -110,7 +110,7 @@ void Assoc::assoc_maintenance_thread() {
         if (!this->expanding)
             done = true;
 
-        this->engine->unlock_cache();
+        this->engine->lru->unlock_cache();
     } while (!done);
 }
 

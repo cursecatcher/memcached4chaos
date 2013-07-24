@@ -1,6 +1,6 @@
 #include "slabs.hpp"
 
-Slabs::Slabs(Engine *engine, const size_t limit, const double factor, const bool prealloc) {
+Slabs::Slabs(DataCache *engine, const size_t limit, const double factor, const bool prealloc) {
     this->engine = engine;
     this->mem_limit = limit;
 
