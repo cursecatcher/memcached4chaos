@@ -11,7 +11,7 @@ void* fun_assoc_maintenance_thread(void* arg);
 Assoc::Assoc(DataCache* engine, unsigned int hashpower) {
     this->engine = engine;
     this->hashpower = hashpower;
-    this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
+//    this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
     this->primary_hashtable = (hash_item**) calloc(hashsize(this->hashpower), sizeof(void *));
 
     if (!this->primary_hashtable)
@@ -74,12 +74,6 @@ void Assoc::assoc_delete(uint32_t hash, const char *key, const size_t nkey) {
      * they can't find */
     assert(*before != NULL);
 }
-/*
-int Assoc::start_assoc_maintenance_thread(Engine *engine) {
-}
-
-void Assoc::stop_assoc_maintenance_thread(Engine *engine) {
-} */
 
 void Assoc::assoc_maintenance_thread() {
     bool done = false;
@@ -87,7 +81,7 @@ void Assoc::assoc_maintenance_thread() {
     do {
         this->engine->lru->lock_cache();
 
-        for (int ii = 0; ii < this->hash_bulk_move && this->expanding; ii++) {
+        for (int ii = 0; ii < DEFAULT_HASH_BULK_MOVE && this->expanding; ii++) {
             hash_item *it, *next;
             int bucket;
 

@@ -30,7 +30,7 @@ private:
      * Ranges from 0 .. hashsize(hashpower - 1) - 1. */
     unsigned int expand_bucket;
 
-    int hash_bulk_move;
+//    int hash_bulk_move;
 
 
     void assoc_expand();
