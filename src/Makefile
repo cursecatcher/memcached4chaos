@@ -1,4 +1,4 @@
-NAME = memcached
+NAME = datacache
 CC = g++
 LIBS = -lpthread
 FLAGS = -Wall
