@@ -1,13 +1,10 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include <iostream> // test
 #include "const_types.h"
 #include "slabs.hpp"
 #include "assoc.hpp"
 #include "lru.hpp"
-
-using namespace std;
 
 /** previous declarations **/
 class Assoc;
@@ -17,7 +14,6 @@ class Slabs;
 
 struct config {
     bool use_cas;
-    size_t verbose;
     rel_time_t oldest_live;
     bool evict_to_free;
     size_t maxbytes; // SLABS
@@ -40,9 +36,9 @@ public:
 
     DataCache();
 
-    int get_item(const char *key, int32_t &bufflen, void **outbuffer);
-    int store_item(const char *key, const void *inbuffer, int32_t bufflen);
-    int delete_item(const char *key);
+    bool get_item(const char *key, int32_t &bufflen, void **outbuffer);
+    bool store_item(const char *key, const void *inbuffer, int32_t bufflen);
+    bool delete_item(const char *key);
 
     rel_time_t get_current_time() { return 0; }
 };
