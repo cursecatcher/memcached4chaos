@@ -1,10 +1,11 @@
 TO DO LIST:
 
-- Sostituire 'struct default_engine*' con classe 'Engine'
-- Definire metodi per l'utilizzo di cache_lock (in Engine)
-- Verificare se ITEM_ntotal necessiti del parametro Engine* (items.cpp)
+- Sostituire 'struct default_engine*' con classe 'Engine' OK
+- Definire metodi per l'utilizzo di cache_lock (in Engine) OK
+- Verificare se ITEM_ntotal necessiti del parametro Engine* (items.cpp) OK
 - Definire script di configurazione per verificare se la macchina è 
   LITTLE o BIG ENDIAN 
-- convertire hash_item (struct) in classe ???
-- verificare in items_op::ITEM_ntotal se si può usare item->iflag & ITEM_WITH_CAS
+- convertire hash_item (struct) in classe ??? NO
+- verificare in items_op::ITEM_ntotal se si può usare item->iflag & ITEM_WITH_CAS OK
+- verificare rimovibilità CAS
 
