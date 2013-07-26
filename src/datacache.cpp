@@ -26,7 +26,7 @@ bool DataCache::get_item(const char *key, int32_t &bufflen, void **outbuffer) {
 
     if (it) {
         bufflen = it->nbytes;
-        memcpy(*outbuffer, (void*) items::item_get_data(it), it->nbytes);
+        memcpy(*outbuffer, items::item_get_data(it), it->nbytes);
 
         ret = true;
     }

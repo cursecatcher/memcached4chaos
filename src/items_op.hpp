@@ -8,7 +8,7 @@ namespace items {
         return (char*) (item + 1);
     }
 
-    inline char* item_get_data(const hash_item* item) {
+    inline void* item_get_data(const hash_item* item) {
         return ((char *) items::item_get_key(item)) + item->nkey;
     }
 
