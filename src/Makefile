@@ -1,9 +1,9 @@
 NAME = datacache
 CC = g++
 LIBS = -lpthread
-FLAGS = -Wall
+FLAGS = -Wall -O2
 
-all: main.cpp datacache.o slabs.o assoc.o lru.o hash.o items_op.o const_types.h
+all: main.cpp datacache.o slabs.o assoc.o lru.o hash.o items_op.hpp const_types.h
 	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
 
 datacache.o: datacache.cpp datacache.hpp
@@ -19,9 +19,6 @@ lru.o: lru.cpp lru.hpp
 	$(CC) -c $^ $(LIBS) $(FLAGS)
 
 hash.o: hash.c hash.h
-	$(CC) -c $^ $(LIBS) $(FLAGS)
-
-items_op.o: items_op.cpp items_op.hpp
 	$(CC) -c $^ $(LIBS) $(FLAGS)
 
 clean:
