@@ -121,7 +121,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
 
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
-        if (this->engine->config.evict_to_free)
+        if (!this->engine->config.evict_to_free)
             return NULL;
 
         /* try to get one off the right LRU
