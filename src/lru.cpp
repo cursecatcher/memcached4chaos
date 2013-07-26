@@ -12,12 +12,11 @@ LRU::LRU(DataCache *engine) {
 }
 
 hash_item *LRU::item_alloc(const char *key, size_t nkey,
-                           int flags,/*rel_time_t exptime, */
-                           int nbytes) {
+                           int flags, int nbytes) {
     hash_item *it;
 
     this->lock_cache();
-    it = this->do_item_alloc(key, nkey, flags, /*exptime,*/ nbytes);
+    it = this->do_item_alloc(key, nkey, flags, nbytes);
     this->unlock_cache();
     return it;
 }

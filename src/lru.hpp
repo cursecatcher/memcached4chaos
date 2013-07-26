@@ -24,8 +24,7 @@ private:
     void item_link_q(hash_item *it);
     void item_unlink_q(hash_item *it);
     hash_item *do_item_alloc(const char *key, const size_t nkey,
-                             const int flags,/*, const rel_time_t exptime,*/
-                             const int nbytes);
+                             const int flags, const int nbytes);
     hash_item *do_item_get(const char *key, const size_t nkey);
     int do_item_link(hash_item *it);
     void do_item_unlink(hash_item *it);
@@ -43,15 +42,11 @@ public:
      * @param key the key for the new item
      * @param nkey the number of bytes in the key
      * @param flags the flags in the new item
-     * @param exptime when the object should expire ***REMOVED***
      * @param nbytes the number of bytes in the body for the item
-     * @return a pointer to an item on success NULL otherwise */
-    hash_item *item_alloc(const char *key, size_t nkey,
-                          int flags,/*rel_time_t exptime, */
-                          int nbytes);
+     * @return a pointer to an item on success or NULL otherwise */
+    hash_item *item_alloc(const char *key, size_t nkey, int flags, int nbytes);
 
     /** Get an item from the cache
-     *
      * @param engine handle to the storage engine
      * @param key the key for the item to get
      * @param nkey the number of bytes in the key
@@ -78,7 +73,7 @@ public:
      *       there so that we can get it from the item instead? */
     ENGINE_ERROR_CODE store_item(hash_item *it);
 
-    void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
-    void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
+    inline void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
+    inline void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
 };
 #endif
