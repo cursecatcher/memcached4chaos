@@ -22,10 +22,9 @@
 
 /** To avoid scanning through the complete cache in some circumstances we'll
  * just give up and return an error after inspecting a fixed number of objects. */
-#define SEARCH_ITEMS 50 //static const int search_items = 50;
+#define SEARCH_ITEMS 50
 
 /* Flags */
-#define ITEM_WITH_CAS 1
 #define ITEM_LINKED (1<<8)
 #define ITEM_SLABBED (2<<8)
 
