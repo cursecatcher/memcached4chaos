@@ -4,7 +4,6 @@ namespace items {
     char* item_get_key(const hash_item* item);
     char* item_get_data(const hash_item* item);
     uint64_t item_get_cas(const hash_item* item);
-    uint8_t item_get_clsid(const hash_item* item);
 
     void item_set_cas(const hash_item* item, const uint64_t val);
 
