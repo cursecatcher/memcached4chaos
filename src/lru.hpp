@@ -23,8 +23,7 @@ private:
 
     void item_link_q(hash_item *it);
     void item_unlink_q(hash_item *it);
-    hash_item *do_item_alloc(const char *key, const size_t nkey,
-                             const int flags, const int nbytes);
+    hash_item *do_item_alloc(const char *key, const size_t nkey, const int nbytes);
     hash_item *do_item_get(const char *key, const size_t nkey);
     int do_item_link(hash_item *it);
     void do_item_unlink(hash_item *it);
@@ -41,10 +40,9 @@ public:
      * @param engine handle to the storage engine
      * @param key the key for the new item
      * @param nkey the number of bytes in the key
-     * @param flags the flags in the new item
      * @param nbytes the number of bytes in the body for the item
      * @return a pointer to an item on success or NULL otherwise */
-    hash_item *item_alloc(const char *key, size_t nkey, int flags, int nbytes);
+    hash_item *item_alloc(const char *key, size_t nkey, int nbytes);
 
     /** Get an item from the cache
      * @param engine handle to the storage engine

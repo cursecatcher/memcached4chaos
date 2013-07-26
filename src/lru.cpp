@@ -11,11 +11,11 @@ LRU::LRU(DataCache *engine) {
     }
 }
 
-hash_item *LRU::item_alloc(const char *key, size_t nkey, int flags, int nbytes) {
+hash_item *LRU::item_alloc(const char *key, size_t nkey, int nbytes) {
     hash_item *it;
 
     this->lock_cache();
-    it = this->do_item_alloc(key, nkey, flags, nbytes);
+    it = this->do_item_alloc(key, nkey, nbytes);
     this->unlock_cache();
     return it;
 }
@@ -100,8 +100,7 @@ void LRU::item_unlink_q(hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
-                               const int flags, const int nbytes) {
+hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbytes) {
     hash_item *it = NULL;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
@@ -146,7 +145,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
              * free it anyway. */
              tries = SEARCH_ITEMS;
              for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
-                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < current_time) {
+                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->engine->get_current_time()) {
                      search->refcount = 0; /****/
                      this->do_item_unlink(search);
                      break;
@@ -159,14 +158,13 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
 
     assert(it->slabs_clsid == 0);
     it->slabs_clsid = id;
-
     assert(it != this->heads[it->slabs_clsid]);
+
     it->next = it->prev = it->h_next = NULL;
     it->refcount = 1; // the caller will have a reference
     it->iflag = this->engine->config.use_cas ? ITEM_WITH_CAS : 0;
     it->nkey = nkey;
     it->nbytes = nbytes;
-    it->flags = flags;
     memcpy((void *) items::item_get_key(it), key, nkey);
 
     return it;
