@@ -73,5 +73,6 @@ public:
 
     inline void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
     inline void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
+    inline rel_time_t get_current_time() { return 0; }
 };
 #endif

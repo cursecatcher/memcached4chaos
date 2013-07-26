@@ -105,16 +105,10 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
 
-    if (this->engine->config.use_cas)
-        ntotal += sizeof(uint64_t);
-
     if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
         return NULL;
 
     if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
-        /* Could not find an expired item at the tail, and memory allocation
-         * failed. Try to evict some items! */
-
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
         if (!this->engine->config.evict_to_free)
@@ -145,7 +139,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
              * free it anyway. */
              tries = SEARCH_ITEMS;
              for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
-                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->engine->get_current_time()) {
+                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->get_current_time()) {
                      search->refcount = 0; /****/
                      this->do_item_unlink(search);
                      break;
@@ -162,7 +156,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
 
     it->next = it->prev = it->h_next = NULL;
     it->refcount = 1; // the caller will have a reference
-    it->iflag = this->engine->config.use_cas ? ITEM_WITH_CAS : 0;
+    it->iflag = 0;
     it->nkey = nkey;
     it->nbytes = nbytes;
     memcpy((void *) items::item_get_key(it), key, nkey);
@@ -171,12 +165,11 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
 }
 
 hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
-    rel_time_t current_time = this->engine->get_current_time(); // ?
     hash_item *it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey);
 
     if (it != NULL) {
         if (this->engine->config.oldest_live != 0 &&
-            this->engine->config.oldest_live <= current_time &&
+            this->engine->config.oldest_live <= this->get_current_time() &&
             it->time <= this->engine->config.oldest_live) {
 
             this->do_item_unlink(it);
@@ -193,13 +186,11 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
 
 int LRU::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
-    assert(it->nbytes < (1024 * 1024)); // 1 MB max size
+    assert(it->nbytes < this->engine->config.item_size_max);
     it->iflag |= ITEM_LINKED;
-    it->time = this->engine->get_current_time();
+    it->time = this->get_current_time();
     this->engine->assoc->assoc_insert(hash(items::item_get_key(it), it->nkey), it);
 
-    /* Allocate a new CAS ID on link. */
-    items::item_set_cas(it, items::get_cas_id()); // BOH
     this->item_link_q(it);
 
     return 1;
@@ -224,7 +215,7 @@ void LRU::do_item_release(hash_item *it) {
 }
 
 void LRU::do_item_update(hash_item *it) {
-    rel_time_t current_time = this->engine->get_current_time();
+    rel_time_t current_time = this->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->iflag & ITEM_SLABBED) == 0);
@@ -245,7 +236,7 @@ int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
 }
 
 void LRU::item_free(hash_item *it) {
-    size_t ntotal = items::ITEM_ntotal(it, engine->config.use_cas);
+    size_t ntotal = items::ITEM_ntotal(it);
 
     assert((it->iflag & ITEM_LINKED) == 0);
     assert(it != this->heads[it->slabs_clsid]);
