@@ -2,7 +2,6 @@
 
 DataCache::DataCache() {
     //init config
-    this->config.use_cas = true;
     this->config.oldest_live = 0;
     this->config.evict_to_free = true;
     this->config.maxbytes = 64 * 1024 * 1024; // 64 MB

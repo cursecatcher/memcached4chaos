@@ -13,7 +13,6 @@ class Slabs;
 
 
 struct config {
-    bool use_cas;
     rel_time_t oldest_live;
     bool evict_to_free;
     size_t maxbytes; // SLABS
@@ -22,8 +21,6 @@ struct config {
     unsigned int hashpower; // ASSOC
     size_t chunk_size;
     size_t item_size_max;
-    bool ignore_vbucket;
-    bool vb0;
 };
 
 
@@ -39,7 +36,5 @@ public:
     bool get_item(const char *key, int32_t &bufflen, void **outbuffer);
     bool store_item(const char *key, const void *inbuffer, int32_t bufflen);
     bool delete_item(const char *key);
-
-    inline rel_time_t get_current_time() { return 0; }
 };
 #endif
