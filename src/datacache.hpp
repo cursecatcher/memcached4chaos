@@ -40,6 +40,6 @@ public:
     bool store_item(const char *key, const void *inbuffer, int32_t bufflen);
     bool delete_item(const char *key);
 
-    rel_time_t get_current_time() { return 0; }
+    inline rel_time_t get_current_time() { return 0; }
 };
 #endif

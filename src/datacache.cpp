@@ -36,7 +36,7 @@ bool DataCache::get_item(const char *key, int32_t &bufflen, void **outbuffer) {
 }
 
 bool DataCache::store_item(const char *key, const void *inbuffer, int32_t bufflen) {
-    hash_item *it = this->lru->item_alloc(key, strlen(key), /*??*/ 0, bufflen);
+    hash_item *it = this->lru->item_alloc(key, strlen(key), bufflen);
     bool ret = false;
 
     if (it) {
