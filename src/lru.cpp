@@ -11,8 +11,7 @@ LRU::LRU(DataCache *engine) {
     }
 }
 
-hash_item *LRU::item_alloc(const char *key, size_t nkey,
-                           int flags, int nbytes) {
+hash_item *LRU::item_alloc(const char *key, size_t nkey, int flags, int nbytes) {
     hash_item *it;
 
     this->lock_cache();
@@ -102,8 +101,7 @@ void LRU::item_unlink_q(hash_item *it) {
 }
 
 hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
-                               const int flags, /*const rel_time_t exptime,*/
-                               const int nbytes) {
+                               const int flags, const int nbytes) {
     hash_item *it = NULL;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
@@ -112,7 +110,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
         ntotal += sizeof(uint64_t);
 
     if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
-        return 0;
+        return NULL;
 
     if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
         /* Could not find an expired item at the tail, and memory allocation
@@ -147,11 +145,12 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey,
              * three hours, so if we find one in the tail which is that old,
              * free it anyway. */
              tries = SEARCH_ITEMS;
-             for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev) {
-                 search->refcount = 0; /****/
-                 this->do_item_unlink(search);
-                 break;
-             }
+             for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
+                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < current_time) {
+                     search->refcount = 0; /****/
+                     this->do_item_unlink(search);
+                     break;
+                 }
 
              if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL)
                 return NULL;
