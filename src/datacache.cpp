@@ -5,12 +5,12 @@ DataCache::DataCache() {
     this->config.use_cas = true;
     this->config.oldest_live = 0;
     this->config.evict_to_free = true;
-    this->config.maxbytes = 64 * 1024 * 1024;
+    this->config.maxbytes = 64 * 1024 * 1024; // 64 MB
     this->config.preallocate = false;
     this->config.factor = 1.25;
     this->config.hashpower = 16;
     this->config.chunk_size = 48;
-    this->config.item_size_max = 1024;
+    this->config.item_size_max = 1024 * 1024; // 1 MB
 
     this->assoc = new Assoc(this, this->config.hashpower);
     this->slabs = new Slabs(this,
