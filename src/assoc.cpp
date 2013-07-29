@@ -28,7 +28,7 @@ hash_item *Assoc::assoc_find(uint32_t hash, const char *key, const size_t nkey) 
         it = this->primary_hashtable[hash & hashmask(this->hashpower)];
 
     for (; it; it = it->h_next) // gestione delle collisioni
-        if ((nkey == it->nkey) && memcmp(key, items::item_get_key(it), nkey) == 0)
+        if ((nkey == it->nkey) && memcmp(key, this->engine->lru->item_get_key(it), nkey) == 0)
             break;
 
     return it;
@@ -38,7 +38,7 @@ int Assoc::assoc_insert(uint32_t hash, hash_item *it) {
     unsigned int bucket;
 
     // shouldn't have duplicately named things defined
-    assert(assoc_find(hash, items::item_get_key(it), it->nkey) == NULL);
+    assert(assoc_find(hash, this->engine->lru->item_get_key(it), it->nkey) == NULL);
 
     if (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket) {
         it->h_next = this->old_hashtable[bucket];
@@ -88,7 +88,7 @@ void Assoc::assoc_maintenance_thread() {
             for (it = this->old_hashtable[this->expand_bucket]; it; it = next) {
                 next = it->h_next;
 
-                bucket = hash(items::item_get_key(it), it->nkey) & hashmask(this->hashpower);
+                bucket = hash(this->engine->lru->item_get_key(it), it->nkey) & hashmask(this->hashpower);
                 it->h_next = this->primary_hashtable[bucket];
                 this->primary_hashtable[bucket] = it;
             }
@@ -154,7 +154,7 @@ hash_item** Assoc::hashitem_before(uint32_t hash, const char *key, const size_t 
     else
         pos = &this->primary_hashtable[hash & hashmask(this->hashpower)];
 
-    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, items::item_get_key(*pos), nkey)))
+    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, this->engine->lru->item_get_key(*pos), nkey)))
         pos = &(*pos)->h_next;
 
     return pos;
