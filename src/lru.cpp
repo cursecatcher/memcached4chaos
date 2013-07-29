@@ -3,6 +3,9 @@
 
 LRU::LRU(DataCache *engine) {
     this->engine = engine;
+    this->assoc = engine->assoc;
+    this->slabs = engine->slabs;
+
     pthread_mutex_init(&this->cache_lock, NULL);
 
     for (int i = 0; i < POWER_LARGEST; i++) {
@@ -101,14 +104,14 @@ void LRU::item_unlink_q(hash_item *it) {
 }
 
 hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbytes) {
-    hash_item *it = NULL;
+    hash_item *it;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
 
-    if ((id = this->engine->slabs->slabs_clsid(ntotal)) == 0)
+    if ((id = this->slabs->slabs_clsid(ntotal)) == 0)
         return NULL;
 
-    if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
+    if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL) {
         /* If requested to not push old items out of cache when memory runs out,
          * we're out of luck at this point... */
         if (!this->engine->config.evict_to_free)
@@ -130,7 +133,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
                 break;
             }
 
-        if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL) {
+        if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL) {
             /* Last ditch effort. There is a very rare bug which causes
              * refcount leaks. We've fixed most of them, but it still happens,
              * and it may happen in the future.
@@ -140,12 +143,12 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
              tries = SEARCH_ITEMS;
              for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
                  if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->get_current_time()) {
-                     search->refcount = 0; /****/
+                     search->refcount = 0;
                      this->do_item_unlink(search);
                      break;
                  }
 
-             if ((it = (hash_item*) this->engine->slabs->slabs_alloc(ntotal, id)) == NULL)
+             if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL)
                 return NULL;
         }
     }
@@ -159,13 +162,13 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
     it->iflag = 0;
     it->nkey = nkey;
     it->nbytes = nbytes;
-    memcpy((void *) items::item_get_key(it), key, nkey);
+    memcpy((void *) this->item_get_key(it), key, nkey);
 
     return it;
 }
 
 hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
-    hash_item *it = this->engine->assoc->assoc_find(hash(key, nkey), key, nkey);
+    hash_item *it = this->assoc->assoc_find(hash(key, nkey), key, nkey);
 
     if (it != NULL) {
         if (this->engine->config.oldest_live != 0 &&
@@ -187,10 +190,11 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
 int LRU::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
     assert(it->nbytes < this->engine->config.item_size_max);
+
     it->iflag |= ITEM_LINKED;
     it->time = this->get_current_time();
-    this->engine->assoc->assoc_insert(hash(items::item_get_key(it), it->nkey), it);
 
+    this->assoc->assoc_insert(hash(this->item_get_key(it), it->nkey), it);
     this->item_link_q(it);
 
     return 1;
@@ -198,10 +202,12 @@ int LRU::do_item_link(hash_item *it) {
 
 void LRU::do_item_unlink(hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != 0) {
+        char *key = this->item_get_key(it);
+
         it->iflag &= ~ITEM_LINKED;
-        char *key = items::item_get_key(it);
-        this->engine->assoc->assoc_delete(hash(key, it->nkey), key, it->nkey);
+        this->assoc->assoc_delete(hash(key, it->nkey), key, it->nkey);
         this->item_unlink_q(it);
+
         if (it->refcount == 0)
             this->item_free(it);
     }
@@ -236,7 +242,7 @@ int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
 }
 
 void LRU::item_free(hash_item *it) {
-    size_t ntotal = items::ITEM_ntotal(it);
+    size_t ntotal = this->ITEM_ntotal(it);
 
     assert((it->iflag & ITEM_LINKED) == 0);
     assert(it != this->heads[it->slabs_clsid]);
@@ -247,11 +253,11 @@ void LRU::item_free(hash_item *it) {
     unsigned int clsid = it->slabs_clsid;
     it->slabs_clsid = 0;
     it->iflag |= ITEM_SLABBED;
-    this->engine->slabs->slabs_free(it, ntotal, clsid);
+    this->slabs->slabs_free(it, ntotal, clsid);
 }
 
 ENGINE_ERROR_CODE LRU::do_store_item(hash_item *it) {
-    hash_item *old_it = this->do_item_get(items::item_get_key(it), it->nkey);
+    hash_item *old_it = this->do_item_get(this->item_get_key(it), it->nkey);
 
     if (old_it != NULL) {
         this->do_item_replace(old_it, it);
