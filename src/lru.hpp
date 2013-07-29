@@ -2,18 +2,22 @@
 #define LRU_HPP
 
 #include <cassert>
-#include "hash.h"
-#include "items_op.hpp"
+#include "const_types.h"
 #include "datacache.hpp"
+#include "hash.h"
 
 /** previous declarations **/
 class Assoc;
+class Slabs;
 class DataCache;
 
 
 class LRU {
 private:
     DataCache* engine;
+    Slabs *slabs;
+    Assoc *assoc;
+
     pthread_mutex_t cache_lock;
 
     hash_item *heads[POWER_LARGEST];
@@ -70,6 +74,16 @@ public:
      * @todo should we refactor this into hash_item ** and remove the cas
      *       there so that we can get it from the item instead? */
     ENGINE_ERROR_CODE store_item(hash_item *it);
+
+    inline char* item_get_key(const hash_item* item) {
+        return (char*) (item + 1);
+    }
+    inline void* item_get_data(const hash_item* item) {
+        return ((char *) this->item_get_key(item)) + item->nkey;
+    }
+    inline size_t ITEM_ntotal(const hash_item *item) {
+        return (sizeof(hash_item) + item->nkey + item->nbytes);
+    }
 
     inline void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
     inline void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
