@@ -26,7 +26,7 @@ bool DataCache::get_item(const char *key, int32_t &bufflen, void **outbuffer) {
 
     if (it) {
         bufflen = it->nbytes;
-        memcpy(*outbuffer, items::item_get_data(it), it->nbytes);
+        memcpy(*outbuffer, this->lru->item_get_data(it), it->nbytes);
 
         ret = true;
     }
@@ -39,7 +39,7 @@ bool DataCache::store_item(const char *key, const void *inbuffer, int32_t buffle
     bool ret = false;
 
     if (it) {
-        memcpy(items::item_get_data(it), inbuffer, bufflen);
+        memcpy(this->lru->item_get_data(it), inbuffer, bufflen);
         this->lru->store_item(it);
 
         ret = true;
