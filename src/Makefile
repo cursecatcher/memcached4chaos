@@ -3,7 +3,7 @@ CC = g++
 LIBS = -lpthread
 FLAGS = -O2 -Wall -Wextra -pedantic
 
-all: main.cpp datacache.o slabs.o assoc.o lru.o hash.o items_op.hpp const_types.h
+all: main.cpp datacache.o slabs.o assoc.o lru.o hash.o const_types.h
 	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
 
 datacache.o: datacache.cpp datacache.hpp
