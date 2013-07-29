@@ -1,68 +1,93 @@
 #include <iostream>
+#include <pthread.h>
+#include <queue>
+
 #include "datacache.hpp"
 
 using namespace std;
 
+enum opt_t { GET_BY_KEY, STORE_KV, DELETE_BY_KEY };
+
+typedef struct {
+    string key;
+    string value;
+    enum opt_t op;
+} req_t;
+
+typedef struct {
+    queue<req_t> req_queue;
+    pthread_mutex_t queue_lock;
+    pthread_mutex_t cond_mutex;
+    pthread_cond_t cond;
+} datathread_t;
+
+void *server(void *arg);
+void *reader(void *arg);
+void *writer(void *arg);
+
 
 int main() {
-    DataCache *cache;
-    void *buf;
-    int bufflen;
+    datathread_t data;
 
-    string keys[10];
-    string values[10];
+    pthread_mutex_init(&data.queue_lock, NULL);
+    pthread_mutex_init(&data.cond_mutex, NULL);
+    pthread_cond_init(&data.cond, NULL);
+}
 
-    cache = new DataCache();
-    buf = malloc(64);
+void *server(void *arg) {
+    datathread_t *data; (datathread_t*) arg;
+    req_t temp;
 
-    keys[0] = "mem";  values[0] = "cached";
-    keys[1] = "cas";  values[1] = "compare and set";
-    keys[2] = "slabbing";   values[2] = "broodal";
-    keys[3] = "hash";
-
-    for (int i = 0; i < 3; i++)
-        if (cache->store_item(keys[i].c_str(), (void*) values[i].c_str(), values[i].size()))
-            cout << "store('" << keys[i] << "', '" << values[i] << "') OK" << endl;
-
-    cout << endl;
-
-    for (int i = 2; i >= 0; i--)
-        if (cache->get_item(keys[i].c_str(), bufflen, &buf)) {
-            char *p = (char*) buf;
-            p[bufflen] = '\0';
-            cout << "get('" << keys[i] << "') -> '" << p << "'" << endl;
+    while (true) {
+        pthread_mutex_lock(&data->queue_lock);
+        if (data->req_queue.empty()) {
+            pthread_mutex_unlock(&data->queue_lock);
+            pthread_cond_wait(&data->cond, &data->cond_mutex);
+            pthread_cond_lock(&data->queue_lock);
         }
-        else {
-            cout << "key '" << keys[i] << "' is not present" << endl;
-        }
+        temp = data->req_queue.front(); /* preleva elemento */
+        data->req_queue.pop();
+        pthread_mutex_unlock(&data->queue_lock);
 
-    cout << endl;
+        /* elabora temp */
+        /* latenza */
+    }
+}
 
-    int i = 2;
-    values[i] = "list of pointers";
+void *reader(void *arg) {
+    datathread_t *data = (datathread_t*) arg;
 
-    if (cache->store_item(keys[i].c_str(), (void*) values[i].c_str(), values[i].size()))
-        cout << "store('" << keys[i] << "', '" << values[i] << "') OK" << endl;
-    else
-        cout << "smerdo" << endl;
+    while (true) {
+        /* crea richiesta : k */
 
-    cout << endl;
+        pthread_mutex_lock(&data->queue_lock);
+        data->req_queue.push_back(/*push richiesta*/);
+        pthread_cond_signal(&data->cond_mutex);
+        pthread_mutex_unlock(&data->queue_lock);
 
-    for (int j = 0; j < 2; j++) {
-        if (cache->get_item(keys[i].c_str(), bufflen, &buf)) {
-            char *p = (char*) buf;
-            p[bufflen] = '\0';
-            cout << "get('" << keys[i] << "') -> '" << p << "'" << endl;
-        }
-        else {
-            cout << "key '" << keys[i] << "' is not present" << endl;
-        }
+        /* latenza : sleep */
 
-        if (cache->delete_item(keys[i].c_str()))
-            cout << "key " << keys[i] << " deleted" << endl;
+        /* attendi risposta da server */
     }
 
-    free(buf);
+    return NULL;
+}
 
-    return 0;
+void *writer(void *arg) {
+    datathread_t *data = (datathread_t*) arg;
+
+    while (true) {
+        /* crea richiesta : k, v */
+
+        pthread_mutex_lock(&data->queue_lock);
+        data->req_queue.push_back(/*push richiesta*/);
+        pthread_cond_signal(&data->cond_mutex);
+        pthread_mutex_unlock(&data->queue_lock);
+
+        /* latenza : sleep */
+
+        /* attendi conferma store */
+    }
+
+    return NULL;
 }
