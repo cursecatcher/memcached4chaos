@@ -1,4 +1,3 @@
-#include <pthread.h>
 #include "assoc.hpp"
 
 #define hashsize(n) ((uint32_t)1<<(n))
@@ -8,10 +7,9 @@
 void* fun_assoc_maintenance_thread(void* arg);
 
 
-Assoc::Assoc(DataCache* engine, unsigned int hashpower) {
-    this->engine = engine;
+Assoc::Assoc(LRU *lru, unsigned int hashpower) {
+    this->lru = lru;
     this->hashpower = hashpower;
-//    this->hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
     this->primary_hashtable = (hash_item**) calloc(hashsize(this->hashpower), sizeof(void *));
 
     if (!this->primary_hashtable)
@@ -28,7 +26,7 @@ hash_item *Assoc::assoc_find(uint32_t hash, const char *key, const size_t nkey) 
         it = this->primary_hashtable[hash & hashmask(this->hashpower)];
 
     for (; it; it = it->h_next) // gestione delle collisioni
-        if ((nkey == it->nkey) && memcmp(key, this->engine->lru->item_get_key(it), nkey) == 0)
+        if ((nkey == it->nkey) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
             break;
 
     return it;
@@ -38,7 +36,7 @@ int Assoc::assoc_insert(uint32_t hash, hash_item *it) {
     unsigned int bucket;
 
     // shouldn't have duplicately named things defined
-    assert(assoc_find(hash, this->engine->lru->item_get_key(it), it->nkey) == NULL);
+    assert(assoc_find(hash, this->lru->item_get_key(it), it->nkey) == NULL);
 
     if (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket) {
         it->h_next = this->old_hashtable[bucket];
@@ -79,7 +77,7 @@ void Assoc::assoc_maintenance_thread() {
     bool done = false;
 
     do {
-        this->engine->lru->lock_cache();
+        this->lru->lock_cache();
 
         for (int ii = 0; ii < DEFAULT_HASH_BULK_MOVE && this->expanding; ii++) {
             hash_item *it, *next;
@@ -88,7 +86,7 @@ void Assoc::assoc_maintenance_thread() {
             for (it = this->old_hashtable[this->expand_bucket]; it; it = next) {
                 next = it->h_next;
 
-                bucket = hash(this->engine->lru->item_get_key(it), it->nkey) & hashmask(this->hashpower);
+                bucket = hash(this->lru->item_get_key(it), it->nkey) & hashmask(this->hashpower);
                 it->h_next = this->primary_hashtable[bucket];
                 this->primary_hashtable[bucket] = it;
             }
@@ -104,7 +102,7 @@ void Assoc::assoc_maintenance_thread() {
         if (!this->expanding)
             done = true;
 
-        this->engine->lru->unlock_cache();
+        this->lru->unlock_cache();
     } while (!done);
 }
 
@@ -154,7 +152,7 @@ hash_item** Assoc::hashitem_before(uint32_t hash, const char *key, const size_t 
     else
         pos = &this->primary_hashtable[hash & hashmask(this->hashpower)];
 
-    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, this->engine->lru->item_get_key(*pos), nkey)))
+    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, this->lru->item_get_key(*pos), nkey)))
         pos = &(*pos)->h_next;
 
     return pos;
