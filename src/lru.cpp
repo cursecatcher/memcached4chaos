@@ -1,10 +1,10 @@
 #include "lru.hpp"
 
 
-LRU::LRU(DataCache *engine) {
-    this->engine = engine;
-    this->assoc = engine->assoc;
-    this->slabs = engine->slabs;
+LRU::LRU(const struct config settings) {
+    this->assoc = new Assoc(this, settings.hashpower);
+    this->slabs = new Slabs(settings);
+    this->settings = settings;
 
     pthread_mutex_init(&this->cache_lock, NULL);
 
@@ -112,11 +112,6 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
         return NULL;
 
     if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL) {
-        /* If requested to not push old items out of cache when memory runs out,
-         * we're out of luck at this point... */
-        if (!this->engine->config.evict_to_free)
-            return NULL;
-
         /* try to get one off the right LRU
          * don't necessariuly unlink the tail because it may be locked: refcount>0
          * search up from tail an item with refcount==0 and unlink it; give up after search_items
@@ -171,9 +166,9 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
     hash_item *it = this->assoc->assoc_find(hash(key, nkey), key, nkey);
 
     if (it != NULL) {
-        if (this->engine->config.oldest_live != 0 &&
-            this->engine->config.oldest_live <= this->get_current_time() &&
-            it->time <= this->engine->config.oldest_live) {
+        if (this->settings.oldest_live != 0 &&
+            this->settings.oldest_live <= this->get_current_time() &&
+            it->time <= this->settings.oldest_live) {
 
             this->do_item_unlink(it);
             it = NULL;
@@ -189,7 +184,7 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
 
 int LRU::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
-    assert(it->nbytes < this->engine->config.item_size_max);
+    assert(it->nbytes < this->settings.item_size_max);
 
     it->iflag |= ITEM_LINKED;
     it->time = this->get_current_time();

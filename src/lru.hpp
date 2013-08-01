@@ -2,21 +2,23 @@
 #define LRU_HPP
 
 #include <cassert>
+#include <pthread.h>
+
+#include "assoc.hpp"
+#include "slabs.hpp"
 #include "const_types.h"
-#include "datacache.hpp"
 #include "hash.h"
 
 /** previous declarations **/
 class Assoc;
 class Slabs;
-class DataCache;
 
 
 class LRU {
 private:
-    DataCache* engine;
-    Slabs *slabs;
+    struct config settings;
     Assoc *assoc;
+    Slabs *slabs;
 
     pthread_mutex_t cache_lock;
 
@@ -38,7 +40,7 @@ private:
     ENGINE_ERROR_CODE do_store_item(hash_item *it);
 
 public:
-    LRU(DataCache *engine);
+    LRU(const struct config settings);
 
     /** Allocate and initialize a new item structure
      * @param engine handle to the storage engine
@@ -84,9 +86,14 @@ public:
     inline size_t ITEM_ntotal(const hash_item *item) {
         return (sizeof(hash_item) + item->nkey + item->nbytes);
     }
-
-    inline void lock_cache() { pthread_mutex_lock(&this->cache_lock); }
-    inline void unlock_cache() { pthread_mutex_unlock(&this->cache_lock); }
-    inline rel_time_t get_current_time() { return 0; }
+    inline void lock_cache() {
+        pthread_mutex_lock(&this->cache_lock);
+    }
+    inline void unlock_cache() {
+        pthread_mutex_unlock(&this->cache_lock);
+    }
+    inline rel_time_t get_current_time() {
+        return 0; //se la implementassi sarebbe meglio, eh!
+    }
 };
 #endif
