@@ -44,6 +44,16 @@ typedef struct _hash_item {
     uint8_t slabs_clsid; // which slab class we're in
 } hash_item;
 
+struct config {
+    rel_time_t oldest_live; //LRU
+    size_t maxbytes; // SLABS
+    bool preallocate; // SLABS
+    float factor; // SLABS
+    size_t chunk_size; // SLABS
+    unsigned int hashpower; // ASSOC
+    size_t item_size_max; // LRU - SLABS
+};
+
 
 typedef enum {
     ENGINE_SUCCESS     = 0x00, /**< The command executed successfully */
