@@ -37,7 +37,7 @@ private:
     void do_item_update(hash_item *it);
     int do_item_replace(hash_item *it, hash_item *new_it);
     void item_free(hash_item *it);
-    ENGINE_ERROR_CODE do_store_item(hash_item *it);
+    void do_store_item(hash_item *it);
 
 public:
     LRU(const struct config settings);
@@ -71,11 +71,8 @@ public:
      * @param engine handle to the storage engine
      * @param item the item to store
      * @param cas the cas value (OUT)
-     * @return ENGINE_SUCCESS on success
-     *
-     * @todo should we refactor this into hash_item ** and remove the cas
-     *       there so that we can get it from the item instead? */
-    ENGINE_ERROR_CODE store_item(hash_item *it);
+     * @return ENGINE_SUCCESS on success */
+    void store_item(hash_item *it);
 
     inline char* item_get_key(const hash_item* item) {
         return (char*) (item + 1);
