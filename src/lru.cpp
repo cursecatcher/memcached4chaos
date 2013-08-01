@@ -132,16 +132,28 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
              * We can reasonably assume no item can stay locked for more than
              * three hours, so if we find one in the tail which is that old,
              * free it anyway. */
-             tries = SEARCH_ITEMS;
-             for (search = this->tails[id]; tries > 0 && search; tries--, search = search->prev)
+             for (search = this->tails[id], tries = SEARCH_ITEMS; tries > 0 && search; tries--, search = search->prev)
                  if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->get_current_time()) {
                      search->refcount = 0;
                      this->do_item_unlink(search);
                      break;
                  }
 
-             if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL)
-                return NULL;
+            if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL) {
+                /* blocco aggiunto:
+                 * se tutti i metodi 'gentili' hanno fallito, riciclo la
+                 * memoria occupata dall'elemento LRU (least recently used);
+                 * in questo modo abbiamo sempre un po' di memoria disponibile,
+                 * e l'allocazione riesce sempre (credo!) */
+                search = tails[id];
+                tails[id] = tails[id]->prev; // nuovo elemento LRU
+                tails[id]->prev->next = NULL;
+                search->refcount = 0; //
+                this->do_item_unlink(search);
+
+                if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL)
+                    return NULL;
+            }
         }
     }
 
