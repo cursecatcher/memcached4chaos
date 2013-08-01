@@ -25,8 +25,8 @@
 #define SEARCH_ITEMS 50
 
 /* Flags */
-#define ITEM_LINKED (1<<8)
-#define ITEM_SLABBED (2<<8)
+#define ITEM_LINKED 1
+#define ITEM_SLABBED 2
 
 
 typedef uint32_t rel_time_t;
@@ -53,25 +53,4 @@ struct config {
     unsigned int hashpower; // ASSOC
     size_t item_size_max; // LRU - SLABS
 };
-
-
-typedef enum {
-    ENGINE_SUCCESS     = 0x00, /**< The command executed successfully */
-    ENGINE_KEY_ENOENT  = 0x01, /**< The key does not exists */
-    ENGINE_KEY_EEXISTS = 0x02, /**< The key already exists */
-    ENGINE_ENOMEM      = 0x03, /**< Could not allocate memory */
-    ENGINE_NOT_STORED  = 0x04, /**< The item was not stored */
-    ENGINE_EINVAL      = 0x05, /**< Invalid arguments */
-    ENGINE_ENOTSUP     = 0x06, /**< The engine does not support this */
-    ENGINE_EWOULDBLOCK = 0x07, /**< This would cause the engine to block */
-    ENGINE_E2BIG       = 0x08, /**< The data is too big for the engine */
-    ENGINE_WANT_MORE   = 0x09, /**< The engine want more data if the frontend
-                                * have more data available. */
-    ENGINE_DISCONNECT  = 0x0a, /**< Tell the server to disconnect this client */
-    ENGINE_EACCESS     = 0x0b, /**< Access control violations */
-    ENGINE_NOT_MY_VBUCKET = 0x0c, /** < This vbucket doesn't belong to me */
-    ENGINE_TMPFAIL     = 0x0d, /**< Temporary failure, please try again later */
-    ENGINE_ERANGE      = 0x0e, /**< Value outside legal range */
-    ENGINE_FAILED      = 0xff  /**< Generic failue. */
-} ENGINE_ERROR_CODE;
 #endif
