@@ -16,7 +16,7 @@ Assoc::Assoc(LRU *lru, unsigned int hashpower) {
         throw "SMERDO!";
 }
 
-hash_item *Assoc::assoc_find(uint32_t hash, const char *key, const size_t nkey) {
+hash_item *Assoc::assoc_find(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item *it;
     unsigned int bucket;
 
@@ -32,7 +32,7 @@ hash_item *Assoc::assoc_find(uint32_t hash, const char *key, const size_t nkey) 
     return it;
 }
 
-int Assoc::assoc_insert(uint32_t hash, hash_item *it) {
+int Assoc::assoc_insert(const uint32_t hash, hash_item *it) {
     unsigned int bucket;
 
     // shouldn't have duplicately named things defined
@@ -55,7 +55,7 @@ int Assoc::assoc_insert(uint32_t hash, hash_item *it) {
 
 }
 
-void Assoc::assoc_delete(uint32_t hash, const char *key, const size_t nkey) {
+void Assoc::assoc_delete(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item **before = this->hashitem_before(hash, key, nkey);
 
     if (*before) {
@@ -143,7 +143,7 @@ void Assoc::assoc_expand() {
     }
 }
 
-hash_item** Assoc::hashitem_before(uint32_t hash, const char *key, const size_t nkey) {
+hash_item** Assoc::hashitem_before(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item **pos;
     unsigned int bucket;
 

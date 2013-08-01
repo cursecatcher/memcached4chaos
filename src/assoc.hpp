@@ -34,14 +34,14 @@ private:
 
 
     void assoc_expand();
-    hash_item** hashitem_before(uint32_t hash, const char *key, const size_t nkey);
+    hash_item** hashitem_before(const uint32_t hash, const char *key, const size_t nkey);
 
 public:
     Assoc(LRU *lru, unsigned int hashpower);
 
-    hash_item *assoc_find(uint32_t hash, const char *key, const size_t nkey);
-    int assoc_insert(uint32_t hash, hash_item *it);
-    void assoc_delete(uint32_t hash, const char *key, const size_t nkey);
+    hash_item *assoc_find(const uint32_t hash, const char *key, const size_t nkey);
+    int assoc_insert(const uint32_t hash, hash_item *it);
+    void assoc_delete(const uint32_t hash, const char *key, const size_t nkey);
     void assoc_maintenance_thread();
 };
 #endif
