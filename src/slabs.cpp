@@ -1,10 +1,9 @@
 #include "slabs.hpp"
 
-Slabs::Slabs(DataCache *engine, const size_t limit, const double factor, const bool prealloc) {
-    this->engine = engine;
-    this->mem_limit = limit;
+Slabs::Slabs(const struct config init_settings) {
+    this->mem_limit = init_settings.maxbytes;
 
-    if (prealloc) {
+    if (init_settings.preallocate) {
         /* Allocate everything in a big chunk with malloc */
         if ((this->mem_base = malloc(this->mem_limit)) != NULL) {
             this->mem_current = this->mem_base;
@@ -18,20 +17,20 @@ Slabs::Slabs(DataCache *engine, const size_t limit, const double factor, const b
     memset(this->slabclass, 0, sizeof(this->slabclass));
 
     int i = POWER_SMALLEST - 1;
-    unsigned int size = sizeof(hash_item) + this->engine->config.chunk_size;
+    unsigned int size = sizeof(hash_item) + init_settings.chunk_size;
 
-    while (++i < POWER_LARGEST && size <= this->engine->config.item_size_max / factor) {
+    while (++i < POWER_LARGEST && size <= init_settings.item_size_max / init_settings.factor) {
         /* make sure items are always n-byte aligned */
         if (size % CHUNK_ALIGN_BYTES)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
         this->slabclass[i].size = size;
-        this->slabclass[i].perslab = this->engine->config.item_size_max / size;
-        size *= factor;
+        this->slabclass[i].perslab = init_settings.item_size_max / size;
+        size *= init_settings.factor;
     }
 
     this->power_largest = i;
-    this->slabclass[this->power_largest].size = this->engine->config.item_size_max;
+    this->slabclass[this->power_largest].size = init_settings.item_size_max;
     this->slabclass[this->power_largest].perslab = 1;
     pthread_mutex_init(&this->lock, NULL);
 
@@ -210,3 +209,21 @@ void *Slabs::memory_allocate(size_t size) {
 
     return ret;
 }
+
+#ifndef DONT_PREALLOC_SLABS
+void Slabs::slabs_preallocate (const unsigned int maxslabs) {
+    unsigned int prealloc = 0;
+
+    /* pre-allocate a 1MB slab in every size class so people don't get
+       confused by non-intuitive "SERVER_ERROR out of memory"
+       messages.  this is the most common question on the mailing
+       list.  if you really don't want this, you can rebuild without
+       these three lines.  */
+    for (int i = POWER_SMALLEST; i <= POWER_LARGEST; i++) {
+        if (++prealloc > maxslabs)
+            break;
+        do_slabs_newslab(i);
+    }
+
+}
+#endif

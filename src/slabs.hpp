@@ -1,18 +1,13 @@
 #ifndef SLABS_HPP
 #define SLABS_HPP
-//#pragma once
 
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <pthread.h>
 
-#include "datacache.hpp"
 #include "const_types.h"
 
-/** previous declarations **/
-class DataCache;
-class Slabs;
 
 /* powers-of-N allocation structures */
 typedef struct {
@@ -37,8 +32,6 @@ typedef struct {
 
 class Slabs {
 private:
-    DataCache *engine;
-
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
     size_t mem_malloced;
@@ -56,10 +49,12 @@ private:
     int do_slabs_newslab(const unsigned int id);
     bool grow_slab_list(const unsigned int id);
     void *memory_allocate(size_t size);
+    #ifndef DONT_PREALLOC_SLABS
+    void slabs_preallocate (const unsigned int maxslabs);
+    #endif
 
 public:
-
-    Slabs(DataCache *engine, const size_t limit, const double factor, const bool prealloc);
+    Slabs(const struct config init_settings);
 
     unsigned int slabs_clsid(const size_t size);
     void *slabs_alloc(const size_t size, unsigned int id);
