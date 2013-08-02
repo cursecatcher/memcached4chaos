@@ -43,36 +43,55 @@ public:
     LRU(const struct config settings);
 
     /** Allocate and initialize a new item structure
-     * @param engine handle to the storage engine
      * @param key the key for the new item
      * @param nkey the number of bytes in the key
      * @param nbytes the number of bytes in the body for the item
      * @return a pointer to an item on success or NULL otherwise */
-    hash_item *item_alloc(const char *key, size_t nkey, int nbytes);
+    inline hash_item *item_alloc(const char *key, size_t nkey, int nbytes) {
+        hash_item *it;
+
+        this->lock_cache();
+        it = this->do_item_alloc(key, nkey, nbytes);
+        this->unlock_cache();
+        return it;
+    }
 
     /** Get an item from the cache
-     * @param engine handle to the storage engine
      * @param key the key for the item to get
      * @param nkey the number of bytes in the key
      * @return pointer to the item if it exists or NULL otherwise */
-    hash_item *item_get(const char *key, const size_t nkey);
+    inline hash_item *item_get(const char *key, const size_t nkey) {
+        hash_item *it;
+
+        this->lock_cache();
+        it = this->do_item_get(key, nkey);
+        this->unlock_cache();
+        return it;
+    }
 
     /** Release our reference to the current item
-     * @param engine handle to the storage engine
      * @param it the item to release */
-    void item_release(hash_item *it);
+    inline void item_release(hash_item *it) {
+        this->lock_cache();
+        this->do_item_release(it);
+        this->unlock_cache();
+    }
 
     /** Unlink the item from the hash table (make it inaccessible)
-     * @param engine handle to the storage engine
      * @param it the item to unlink */
-    void item_unlink(hash_item *it);
+    inline void item_unlink(hash_item *it) {
+        this->lock_cache();
+        this->do_item_unlink(it);
+        this->unlock_cache();
+    }
 
     /** Store an item in the cache
-     * @param engine handle to the storage engine
-     * @param item the item to store
-     * @param cas the cas value (OUT)
-     * @return ENGINE_SUCCESS on success */
-    void store_item(hash_item *it);
+     * @param item the item to store */
+    inline void store_item(hash_item *it) {
+        this->lock_cache();
+        this->do_store_item(it);
+        this->unlock_cache();
+    }
 
     inline char* item_get_key(const hash_item* item) {
         return (char*) (item + 1);

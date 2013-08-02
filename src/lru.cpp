@@ -14,49 +14,11 @@ LRU::LRU(const struct config settings) {
     }
 }
 
-hash_item *LRU::item_alloc(const char *key, size_t nkey, int nbytes) {
-    hash_item *it;
-
-    this->lock_cache();
-    it = this->do_item_alloc(key, nkey, nbytes);
-    this->unlock_cache();
-    return it;
-}
-
-hash_item *LRU::item_get(const char *key, const size_t nkey) {
-    hash_item *it;
-
-    this->lock_cache();
-    it = this->do_item_get(key, nkey);
-    this->unlock_cache();
-    return it;
-}
-
-void LRU::item_release(hash_item *it) {
-    this->lock_cache();
-    this->do_item_release(it);
-    this->unlock_cache();
-}
-
-void LRU::item_unlink(hash_item *it) {
-    this->lock_cache();
-    this->do_item_unlink(it);
-    this->unlock_cache();
-}
-
-void LRU::store_item(hash_item *it) {
-    this->lock_cache();
-    this->do_store_item(it);
-    this->unlock_cache();
-}
-
-
-
 void LRU::item_link_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
-    assert((it->iflag & ITEM_SLABBED) == 0);
+    assert((it->iflag & ITEM_SLABBED) == NO_FLAGS);
 
     head = &this->heads[it->slabs_clsid];
     tail = &this->tails[it->slabs_clsid];
@@ -111,8 +73,8 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
     if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL) {
         /* try to get one off the right LRU
          * don't necessariuly unlink the tail because it may be locked: refcount>0
-         * search up from tail an item with refcount==0 and unlink it; give up after search_items
-         * tries */
+         * search up from tail an item with refcount==0 and unlink it;
+         * give up after search_items tries */
         if (this->tails[id] == NULL)
             return NULL;
 
@@ -148,7 +110,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
                 search = tails[id];
                 tails[id] = tails[id]->prev; // nuovo elemento LRU
                 tails[id]->prev->next = NULL;
-                search->refcount = 0; //
+                search->refcount = 0;
                 this->do_item_unlink(search);
 
                 if ((it = (hash_item*) this->slabs->slabs_alloc(ntotal, id)) == NULL)
@@ -163,7 +125,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
 
     it->next = it->prev = it->h_next = NULL;
     it->refcount = 1; // the caller will have a reference
-    it->iflag = 0;
+    it->iflag = NO_FLAGS;
     it->nkey = nkey;
     it->nbytes = nbytes;
     memcpy((void *) this->item_get_key(it), key, nkey);
@@ -175,6 +137,7 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
     hash_item *it = this->assoc->assoc_find(hash(key, nkey), key, nkey);
 
     if (it != NULL) {
+        // a che serve?
         if (this->settings.oldest_live != 0 &&
             this->settings.oldest_live <= this->get_current_time() &&
             it->time <= this->settings.oldest_live) {
@@ -192,7 +155,7 @@ hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
 }
 
 int LRU::do_item_link(hash_item *it) {
-    assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == 0);
+    assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == NO_FLAGS);
     assert(it->nbytes < this->settings.item_size_max);
 
     it->iflag |= ITEM_LINKED;
@@ -205,7 +168,7 @@ int LRU::do_item_link(hash_item *it) {
 }
 
 void LRU::do_item_unlink(hash_item *it) {
-    if ((it->iflag & ITEM_LINKED) != 0) {
+    if ((it->iflag & ITEM_LINKED) != NO_FLAGS) {
         char *key = this->item_get_key(it);
 
         it->iflag &= ~ITEM_LINKED;
@@ -220,7 +183,7 @@ void LRU::do_item_unlink(hash_item *it) {
 void LRU::do_item_release(hash_item *it) {
     if (it->refcount)
         it->refcount--;
-    if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == 0)
+    if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == NO_FLAGS)
         this->item_free(it);
 }
 
@@ -228,9 +191,9 @@ void LRU::do_item_update(hash_item *it) {
     rel_time_t current_time = this->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
-        assert((it->iflag & ITEM_SLABBED) == 0);
+        assert((it->iflag & ITEM_SLABBED) == NO_FLAGS);
 
-        if ((it->iflag & ITEM_LINKED) != 0) {
+        if ((it->iflag & ITEM_LINKED) != NO_FLAGS) {
             this->item_unlink_q(it);
             it->time = current_time;
             this->item_link_q(it);
@@ -239,7 +202,7 @@ void LRU::do_item_update(hash_item *it) {
 }
 
 int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
-    assert((it->iflag & ITEM_SLABBED) == 0);
+    assert((it->iflag & ITEM_SLABBED) == NO_FLAGS);
 
     this->do_item_unlink(it);
     return this->do_item_link(new_it);
@@ -248,7 +211,7 @@ int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
 void LRU::item_free(hash_item *it) {
     size_t ntotal = this->ITEM_ntotal(it);
 
-    assert((it->iflag & ITEM_LINKED) == 0);
+    assert((it->iflag & ITEM_LINKED) == NO_FLAGS);
     assert(it != this->heads[it->slabs_clsid]);
     assert(it != this->tails[it->slabs_clsid]);
     assert(it->refcount == 0);

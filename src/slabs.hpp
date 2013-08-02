@@ -56,9 +56,39 @@ private:
 public:
     Slabs(const struct config init_settings);
 
-    unsigned int slabs_clsid(const size_t size);
-    void *slabs_alloc(const size_t size, unsigned int id);
-    void slabs_free(void *ptr, size_t size, unsigned int id);
-    void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal);
+    inline unsigned int slabs_clsid(const size_t size) {
+        unsigned res = POWER_SMALLEST;
+
+        if (size == 0 || size > this->slabclass[this->power_largest].size)
+            return 0;
+
+        while (size > this->slabclass[res].size)
+            res++;
+
+        return res;
+    }
+
+    inline void *slabs_alloc(const size_t size, const unsigned int id) {
+        void *ret;
+
+        pthread_mutex_lock(&this->lock);
+        ret = this->do_slabs_alloc(size, id);
+        pthread_mutex_unlock(&this->lock);
+
+        return ret;
+    }
+
+    inline void slabs_free(void *ptr, size_t size, unsigned int id) {
+        pthread_mutex_lock(&this->lock);
+        this->do_slabs_free(ptr, size, id);
+        pthread_mutex_unlock(&this->lock);
+    }
+
+    inline void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
+        pthread_mutex_lock(&this->lock);
+        assert(id >= POWER_SMALLEST && id <= this->power_largest);
+        this->slabclass[id].requested += ntotal - old;
+        pthread_mutex_unlock(&this->lock);
+    }
 };
 #endif

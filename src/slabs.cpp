@@ -21,7 +21,7 @@ Slabs::Slabs(const struct config init_settings) {
 
     while (++i < POWER_LARGEST && size <= init_settings.item_size_max / init_settings.factor) {
         /* make sure items are always n-byte aligned */
-        if (size % CHUNK_ALIGN_BYTES)
+        if (size % CHUNK_ALIGN_BYTES != 0)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
         this->slabclass[i].size = size;
@@ -32,6 +32,7 @@ Slabs::Slabs(const struct config init_settings) {
     this->power_largest = i;
     this->slabclass[this->power_largest].size = init_settings.item_size_max;
     this->slabclass[this->power_largest].perslab = 1;
+
     pthread_mutex_init(&this->lock, NULL);
 
     /* for the test suite: faking of how much we've already malloc'd */
@@ -48,43 +49,6 @@ Slabs::Slabs(const struct config init_settings) {
     }
 #endif
 }
-
-unsigned int Slabs::slabs_clsid(const size_t size) {
-    unsigned res = POWER_SMALLEST;
-
-    if (size == 0)
-        return 0;
-
-    while (size > this->slabclass[res].size)
-        if (res++ == this->power_largest) /* won't fit in the biggest slab */
-            return 0;
-
-    return res;
-}
-
-void *Slabs::slabs_alloc(const size_t size, unsigned int id) {
-    void *ret;
-
-    pthread_mutex_lock(&this->lock);
-    ret = this->do_slabs_alloc(size, id);
-    pthread_mutex_unlock(&this->lock);
-
-    return ret;
-}
-
-void Slabs::slabs_free(void *ptr, size_t size, unsigned int id) {
-    pthread_mutex_lock(&this->lock);
-    this->do_slabs_free(ptr, size, id);
-    pthread_mutex_unlock(&this->lock);
-}
-
-void Slabs::slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
-    pthread_mutex_lock(&this->lock);
-    assert(id >= POWER_SMALLEST && id <= this->power_largest);
-    this->slabclass[id].requested += ntotal - old;
-    pthread_mutex_unlock(&this->lock);
-}
-
 
 void *Slabs::do_slabs_alloc(const size_t size, unsigned int id) {
     void *ret = NULL;
@@ -155,7 +119,8 @@ int Slabs::do_slabs_newslab(const unsigned int id) {
     int len = p->size * p->perslab;
     void *ptr;
 
-    if ((this->mem_limit && this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
+    if ((this->mem_limit &&
+        this->mem_malloced + len > this->mem_limit && p->slabs > 0) ||
         (!this->grow_slab_list(id)) ||
         ((ptr = this->memory_allocate((size_t) len)) == NULL)) {
 
