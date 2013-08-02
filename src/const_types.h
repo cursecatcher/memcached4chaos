@@ -25,6 +25,7 @@
 #define SEARCH_ITEMS 50
 
 /* Flags */
+#define NO_FLAGS 0
 #define ITEM_LINKED 1
 #define ITEM_SLABBED 2
 
