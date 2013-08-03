@@ -10,7 +10,8 @@ Slabs::Slabs(const struct config init_settings) {
             this->mem_avail = this->mem_limit;
         }
         else {
-            throw "ENGINE_ENOMEM";
+            std::cerr << "Init slabs failed: cannot allocate memory" << std::endl;
+            abort();
         }
     }
 

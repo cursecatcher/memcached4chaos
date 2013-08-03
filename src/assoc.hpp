@@ -7,13 +7,15 @@
 #include "lru.hpp"
 #include "const_types.h"
 
-/** previous declarations **/
-class LRU;
+#define hashsize(n) ((uint32_t)1<<(n))
+#define hashmask(n) (hashsize(n)-1)
 
+/** previous declarations **/
+class LRU_Queues;
 
 class Assoc {
 private:
-    LRU *lru;
+    LRU_Queues *lru;
 
     unsigned int hashpower; // how many powers of 2's worth of buckets we use
     unsigned int hash_items; // Number of items in the hash table.
@@ -32,12 +34,15 @@ private:
      * Ranges from 0 .. hashsize(hashpower - 1) - 1. */
     unsigned int expand_bucket;
 
-
     void assoc_expand();
     hash_item** hashitem_before(const uint32_t hash, const char *key, const size_t nkey);
 
+    inline bool which_hashtable(const uint32_t hash, unsigned int &bucket) {
+        return (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket);
+    }
+
 public:
-    Assoc(LRU *lru, unsigned int hashpower);
+    Assoc(LRU_Queues *lru, unsigned int hashpower);
 
     hash_item *assoc_find(const uint32_t hash, const char *key, const size_t nkey);
     int assoc_insert(const uint32_t hash, hash_item *it);

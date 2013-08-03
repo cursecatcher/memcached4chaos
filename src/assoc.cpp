@@ -1,29 +1,28 @@
 #include "assoc.hpp"
 
-#define hashsize(n) ((uint32_t)1<<(n))
-#define hashmask(n) (hashsize(n)-1)
 #define DEFAULT_HASH_BULK_MOVE 1
 
 void* fun_assoc_maintenance_thread(void* arg);
 
 
-Assoc::Assoc(LRU *lru, unsigned int hashpower) {
+Assoc::Assoc(LRU_Queues *lru, unsigned int hashpower) {
     this->lru = lru;
     this->hashpower = hashpower;
     this->primary_hashtable = (hash_item**) calloc(hashsize(this->hashpower), sizeof(void *));
 
-    if (!this->primary_hashtable)
-        throw "SMERDO!";
+    if (!this->primary_hashtable) {
+        std::cerr << "Init hashtable failed: cannot allocate memory." << std::endl;
+        abort();
+    }
 }
 
 hash_item *Assoc::assoc_find(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item *it;
     unsigned int bucket;
 
-    if (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket)
-        it = this->old_hashtable[bucket];
-    else
-        it = this->primary_hashtable[hash & hashmask(this->hashpower)];
+    it = this->which_hashtable(hash, bucket) ?
+         this->old_hashtable[bucket] :
+         this->primary_hashtable[hash & hashmask(this->hashpower)];
 
     for (; it; it = it->h_next) // gestione delle collisioni
         if ((nkey == it->nkey) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
@@ -38,7 +37,7 @@ int Assoc::assoc_insert(const uint32_t hash, hash_item *it) {
     // shouldn't have duplicately named things defined
     assert(assoc_find(hash, this->lru->item_get_key(it), it->nkey) == NULL);
 
-    if (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket) {
+    if (this->which_hashtable(hash, bucket)) {
         it->h_next = this->old_hashtable[bucket];
         this->old_hashtable[bucket] = it;
     }
@@ -147,10 +146,9 @@ hash_item** Assoc::hashitem_before(const uint32_t hash, const char *key, const s
     hash_item **pos;
     unsigned int bucket;
 
-    if (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket)
-        pos = &this->old_hashtable[bucket];
-    else
-        pos = &this->primary_hashtable[hash & hashmask(this->hashpower)];
+    pos = this-> which_hashtable(hash, bucket) ?
+          &this->old_hashtable[bucket] :
+          &this->primary_hashtable[hash & hashmask(this->hashpower)];
 
     while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, this->lru->item_get_key(*pos), nkey)))
         pos = &(*pos)->h_next;
