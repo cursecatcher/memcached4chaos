@@ -18,5 +18,8 @@ lru.o: lru.cpp lru.hpp
 hash.o: hash.c hash.h
 	$(CC) -c $^ $(LIBS) $(FLAGS)
 
-clean:
-	rm -f *.gch *.o
+clean: 
+	rm -f *.o *.gch 
+
+cleanall:
+	rm -f *.o *.gch $(NAME)
