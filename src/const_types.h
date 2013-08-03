@@ -3,6 +3,7 @@
 
 #include <cstddef> //definition of size_t
 #include <inttypes.h> //definition of uint*_t
+#include <iostream>
 
 /* slabs defines */
 #define POWER_SMALLEST 1
@@ -12,12 +13,11 @@
 #define MAX_NUMBER_OF_SLAB_CLASSES (POWER_LARGEST + 1)
 
 /** How long an object can reasonably be assumed to be locked before
-    harvesting it on a low memory condition. */
+ *  harvesting it on a low memory condition. */
 #define TAIL_REPAIR_TIME (3 * 3600)
 
 /** We only reposition items in the LRU queue if they haven't been repositioned
- * in this many seconds.
- * That saves us from churning on frequently-accessed items. */
+ * in this many seconds. That saves us from churning on frequently-accessed items. */
 #define ITEM_UPDATE_INTERVAL 60
 
 /** To avoid scanning through the complete cache in some circumstances we'll
@@ -46,7 +46,6 @@ typedef struct _hash_item {
 } hash_item;
 
 struct config {
-    rel_time_t oldest_live; //LRU
     size_t maxbytes; // SLABS
     bool preallocate; // SLABS
     float factor; // SLABS

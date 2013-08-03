@@ -7,18 +7,17 @@
 #include "const_types.h"
 
 /** previous declarations **/
-class LRU;
+class LRU_Queues;
 
 
 class DataCache {
 private:
     struct config config;
-    LRU *lru;
+    LRU_Queues *lru;
 
 public:
     DataCache() {
         //init config
-        this->config.oldest_live = 0;
         this->config.maxbytes = 64 * 1024 * 1024; // 64 MB
         this->config.preallocate = false;
         this->config.factor = 1.25;
@@ -26,7 +25,7 @@ public:
         this->config.hashpower = 16;
         this->config.item_size_max = 1024 * 1024; // 1 MB
 
-        this->lru = new LRU(this->config);
+        this->lru = new LRU_Queues(this->config);
     }
 
     inline bool get_item(const char *key, int32_t &bufflen, void **outbuffer) {
