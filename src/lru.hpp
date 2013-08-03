@@ -14,7 +14,7 @@ class Assoc;
 class Slabs;
 
 
-class LRU {
+class LRU_Queues {
 private:
     struct config settings;
     Assoc *assoc;
@@ -40,7 +40,7 @@ private:
     void do_store_item(hash_item *it);
 
 public:
-    LRU(const struct config settings);
+    LRU_Queues(const struct config settings);
 
     /** Allocate and initialize a new item structure
      * @param key the key for the new item
@@ -109,7 +109,7 @@ public:
         pthread_mutex_unlock(&this->cache_lock);
     }
     inline rel_time_t get_current_time() {
-        return 0; //se la implementassi sarebbe meglio, eh!
+        return (rel_time_t) time(NULL);
     }
 };
 #endif

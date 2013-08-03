@@ -1,7 +1,7 @@
 #include "lru.hpp"
 
 
-LRU::LRU(const struct config settings) {
+LRU_Queues::LRU_Queues(const struct config settings) {
     this->assoc = new Assoc(this, settings.hashpower);
     this->slabs = new Slabs(settings);
     this->settings = settings;
@@ -14,7 +14,7 @@ LRU::LRU(const struct config settings) {
     }
 }
 
-void LRU::item_link_q(hash_item *it) {
+void LRU_Queues::item_link_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -36,7 +36,7 @@ void LRU::item_link_q(hash_item *it) {
     this->sizes[it->slabs_clsid]++;
 }
 
-void LRU::item_unlink_q(hash_item *it) {
+void LRU_Queues::item_unlink_q(hash_item *it) {
     hash_item **head, **tail;
 
     assert(it->slabs_clsid < POWER_LARGEST);
@@ -62,7 +62,7 @@ void LRU::item_unlink_q(hash_item *it) {
     this->sizes[it->slabs_clsid]--;
 }
 
-hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbytes) {
+hash_item *LRU_Queues::do_item_alloc(const char *key, const size_t nkey, const int nbytes) {
     hash_item *it;
     size_t ntotal = sizeof(hash_item) + nkey + nbytes;
     unsigned int id;
@@ -94,8 +94,9 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
              * We can reasonably assume no item can stay locked for more than
              * three hours, so if we find one in the tail which is that old,
              * free it anyway. */
+             rel_time_t current_time = this->get_current_time();
              for (search = this->tails[id], tries = SEARCH_ITEMS; tries > 0 && search; tries--, search = search->prev)
-                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < this->get_current_time()) {
+                 if (search->refcount != 0 && search->time + TAIL_REPAIR_TIME < current_time) {
                      search->refcount = 0;
                      this->do_item_unlink(search);
                      break;
@@ -108,7 +109,7 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
                  * in questo modo abbiamo sempre un po' di memoria disponibile,
                  * e l'allocazione riesce sempre (credo!) */
                 search = tails[id];
-                tails[id] = tails[id]->prev; // nuovo elemento LRU
+                tails[id] = tails[id]->prev; // nuovo LRU element
                 tails[id]->prev->next = NULL;
                 search->refcount = 0;
                 this->do_item_unlink(search);
@@ -133,28 +134,18 @@ hash_item *LRU::do_item_alloc(const char *key, const size_t nkey, const int nbyt
     return it;
 }
 
-hash_item *LRU::do_item_get(const char *key, const size_t nkey) {
+hash_item *LRU_Queues::do_item_get(const char *key, const size_t nkey) {
     hash_item *it = this->assoc->assoc_find(hash(key, nkey), key, nkey);
 
-    if (it != NULL) {
-        // a che serve?
-        if (this->settings.oldest_live != 0 &&
-            this->settings.oldest_live <= this->get_current_time() &&
-            it->time <= this->settings.oldest_live) {
-
-            this->do_item_unlink(it);
-            it = NULL;
-        }
-        else {
-            it->refcount++;
-            this->do_item_update(it);
-        }
+    if (it) {
+        it->refcount++;
+        this->do_item_update(it);
     }
 
     return it;
 }
 
-int LRU::do_item_link(hash_item *it) {
+int LRU_Queues::do_item_link(hash_item *it) {
     assert((it->iflag & (ITEM_LINKED | ITEM_SLABBED)) == NO_FLAGS);
     assert(it->nbytes < this->settings.item_size_max);
 
@@ -167,7 +158,7 @@ int LRU::do_item_link(hash_item *it) {
     return 1;
 }
 
-void LRU::do_item_unlink(hash_item *it) {
+void LRU_Queues::do_item_unlink(hash_item *it) {
     if ((it->iflag & ITEM_LINKED) != NO_FLAGS) {
         char *key = this->item_get_key(it);
 
@@ -180,14 +171,14 @@ void LRU::do_item_unlink(hash_item *it) {
     }
 }
 
-void LRU::do_item_release(hash_item *it) {
+void LRU_Queues::do_item_release(hash_item *it) {
     if (it->refcount)
         it->refcount--;
     if (it->refcount == 0 && (it->iflag & ITEM_LINKED) == NO_FLAGS)
         this->item_free(it);
 }
 
-void LRU::do_item_update(hash_item *it) {
+void LRU_Queues::do_item_update(hash_item *it) {
     rel_time_t current_time = this->get_current_time();
 
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
@@ -201,14 +192,14 @@ void LRU::do_item_update(hash_item *it) {
     }
 }
 
-int LRU::do_item_replace(hash_item *it, hash_item *new_it) {
+int LRU_Queues::do_item_replace(hash_item *it, hash_item *new_it) {
     assert((it->iflag & ITEM_SLABBED) == NO_FLAGS);
 
     this->do_item_unlink(it);
     return this->do_item_link(new_it);
 }
 
-void LRU::item_free(hash_item *it) {
+void LRU_Queues::item_free(hash_item *it) {
     size_t ntotal = this->ITEM_ntotal(it);
 
     assert((it->iflag & ITEM_LINKED) == NO_FLAGS);
@@ -223,7 +214,7 @@ void LRU::item_free(hash_item *it) {
     this->slabs->slabs_free(it, ntotal, clsid);
 }
 
-void LRU::do_store_item(hash_item *it) {
+void LRU_Queues::do_store_item(hash_item *it) {
     hash_item *old_it = this->do_item_get(this->item_get_key(it), it->nkey);
 
     if (old_it != NULL) {
