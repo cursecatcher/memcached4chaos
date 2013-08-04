@@ -23,6 +23,7 @@ typedef struct {
     pthread_cond_t cond; //wait for reply from server
 
     pthread_mutex_t *cout_mutex;
+    uint64_t *nreq;
 } client_buffer;
 
 void *client_routine(void *arg);
@@ -35,6 +36,7 @@ int main(int argc, char *argv[]) {
     pthread_mutex_t cout_mutex = PTHREAD_MUTEX_INITIALIZER;
     client_buffer *clients;
     int nworkers, nclients;
+    uint64_t nreq = 0;
 
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " 'nworkers' 'nreaderclients'" << std::endl;
@@ -61,6 +63,7 @@ int main(int argc, char *argv[]) {
         clients[i].thpool = thpool;
         clients[i].index = i;
         clients[i].cout_mutex = &cout_mutex;
+        clients[i].nreq = &nreq;
         pthread_create(&clients[i].tid, NULL, client_routine, &clients[i]);
     }
 
@@ -77,8 +80,11 @@ void reader_routine(void *arg) {
     pthread_cond_signal(&buffer->cond);
 
     pthread_mutex_lock(buffer->cout_mutex);
-    std::cout << (op_ok ? "get done successfully" : "get PHAILLLL") << std::endl;
+    (*buffer->nreq)++;
+    std::cout << "req #" << *buffer->nreq << "...get " << (op_ok ? "done" : "failed") << std::endl;
     pthread_mutex_unlock(buffer->cout_mutex);
+
+    usleep(AVG_LATENCY_TIME);
 }
 
 void writer_routine(void *arg) {
@@ -89,8 +95,11 @@ void writer_routine(void *arg) {
     pthread_cond_signal(&buffer->cond);
 
     pthread_mutex_lock(buffer->cout_mutex);
-    std::cout << (op_ok ? "store done successfully" : "store PHAILLLL") << std::endl;
+    (*buffer->nreq)++;
+    std::cout << "req #" << *buffer->nreq << "...store " << (op_ok ? "done" : "failed") << std::endl;
     pthread_mutex_unlock(buffer->cout_mutex);
+
+    usleep(AVG_LATENCY_TIME);
 }
 
 void *client_routine(void *arg) { //passare selettore di qualche tipo, tgz ne so porcomondo
@@ -106,8 +115,8 @@ void *client_routine(void *arg) { //passare selettore di qualche tipo, tgz ne so
 
 //        usleep(AVG_LATENCY_TIME); //latency
         buffer->thpool->add_task(client_task, arg);
-        pthread_cond_wait(&buffer->cond, &buffer->mutex);
 //        usleep(AVG_LATENCY_TIME); //latency
+        pthread_cond_wait(&buffer->cond, &buffer->mutex);
 
 //        usleep(2 * AVG_LATENCY_TIME);
     }
