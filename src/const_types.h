@@ -38,7 +38,7 @@ typedef struct _hash_item {
     struct _hash_item *h_next; // hash chain next
     rel_time_t time;  // least recent access
 
-    uint32_t nbytes; // < The total size of the data (in bytes)
+    uint32_t nbytes; // The total size of the data (in bytes)
     uint16_t nkey; // The total length of the key (in bytes)
     uint16_t iflag; // Flags associated with the item
     unsigned short refcount;

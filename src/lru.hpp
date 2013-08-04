@@ -97,17 +97,19 @@ public:
         return (char*) (item + 1);
     }
     inline void* item_get_data(const hash_item* item) {
-        return ((char *) this->item_get_key(item)) + item->nkey;
+        return (this->item_get_key(item) + item->nkey);
     }
     inline size_t ITEM_ntotal(const hash_item *item) {
         return (sizeof(hash_item) + item->nkey + item->nbytes);
     }
+
     inline void lock_cache() {
         pthread_mutex_lock(&this->cache_lock);
     }
     inline void unlock_cache() {
         pthread_mutex_unlock(&this->cache_lock);
     }
+
     inline rel_time_t get_current_time() {
         return (rel_time_t) time(NULL);
     }
