@@ -3,8 +3,14 @@ CC = g++
 LIBS = -lpthread
 FLAGS = -O2 -Wall -Wextra -pedantic
 
-all: main.cpp datacache.hpp lru.o assoc.o slabs.o hash.o const_types.h
+all: main.o datacache.hpp threadpool.o lru.o assoc.o slabs.o hash.o const_types.h
 	$(CC) -o $(NAME) $^ $(LIBS) $(FLAGS)
+
+main.o: main.cpp
+	$(CC) -c $^ $(LIBS) $(FLAGS)
+
+threadpool.o: threadpool.cpp threadpool.hpp
+	$(CC) -c $^ $(LIBS) $(FLAGS)
 
 slabs.o: slabs.cpp slabs.hpp
 	$(CC) -c $^ $(LIBS) $(FLAGS)
@@ -18,8 +24,8 @@ lru.o: lru.cpp lru.hpp
 hash.o: hash.c hash.h
 	$(CC) -c $^ $(LIBS) $(FLAGS)
 
-clean: 
-	rm -f *.o *.gch 
+clean:
+	rm -f *.o *.gch
 
 cleanall:
 	rm -f *.o *.gch $(NAME)
