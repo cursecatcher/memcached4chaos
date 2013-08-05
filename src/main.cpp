@@ -26,25 +26,44 @@ typedef struct {
     uint64_t *nreq;
 } client_buffer;
 
+struct sleep_thr {
+    pthread_mutex_t *cout_mutex;
+    threadpool *thpool;
+
+    int ttl;
+};
+
 void *client_routine(void *arg);
 void reader_routine(void *arg);
 void writer_routine(void *arg);
+
+void *sleeper(void* arg) {
+    struct sleep_thr *data = (struct sleep_thr*) arg;
+
+    sleep(data->ttl);
+    pthread_mutex_lock(data->cout_mutex); // stop alle telefonate!
+
+    return NULL;
+}
 
 int main(int argc, char *argv[]) {
     DataCache *cache;
     threadpool *thpool;
     pthread_mutex_t cout_mutex = PTHREAD_MUTEX_INITIALIZER;
     client_buffer *clients;
+    struct sleep_thr data;
     int nworkers, nclients;
     uint64_t nreq = 0;
 
-    if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " 'nworkers' 'nreaderclients'" << std::endl;
+    if (argc != 4) {
+        std::cerr << "Usage: " << argv[0] << " 'nworkers' 'nreaderclients' 'timetolive'" << std::endl;
         return -1;
     }
 
-    if (sscanf(argv[1], "%d", &nworkers) != 1 || sscanf(argv[2], "%d", &nclients) != 1) {
-        std::cerr << "argv[1] and argv[2] must be integers" << std::endl;
+    if (sscanf(argv[1], "%d", &nworkers) != 1 ||
+        sscanf(argv[2], "%d", &nclients) != 1 ||
+        sscanf(argv[3], "%d", &data.ttl) != 1) {
+        std::cerr << "args must be integers" << std::endl;
         return -2;
     }
 
@@ -52,8 +71,8 @@ int main(int argc, char *argv[]) {
     thpool = new threadpool(nworkers);
     clients = new client_buffer[nclients+1];
 
-    /* clients[0] = writer
-     * clients[1...nclients-1] = reader */
+    /* clients[1] = writer
+     * clients[2...nclients-2] = reader */
     for (int i = 0; i <= nclients; i++) {
         pthread_mutex_init(&clients[i].mutex, NULL);
         pthread_cond_init(&clients[i].cond, NULL);
@@ -66,7 +85,13 @@ int main(int argc, char *argv[]) {
         pthread_create(&clients[i].tid, NULL, client_routine, &clients[i]);
     }
 
-    pthread_join(clients[1].tid, NULL);
+//    clients[0].valuebuffer = argv[3];
+    pthread_t t;
+    data.cout_mutex = &cout_mutex;
+    data.thpool = thpool;
+
+    pthread_create(&t, NULL, sleeper, (void*) &data);
+    pthread_join(t, NULL);
 
     return 0;
 }
