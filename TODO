@@ -9,6 +9,7 @@ TO DO LIST:
 - verificare in items_op::ITEM_ntotal se si può usare 
   item->iflag & ITEM_WITH_CAS --> OK 
 - verificare rimovibilità CAS --> OK
+- creare thread sleeper
 
 **** ottimizzazione ****
 - svolgere le operazioni di hashing fuori dai lock  --> OK
