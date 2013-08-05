@@ -93,6 +93,10 @@ int main(int argc, char *argv[]) {
     pthread_create(&t, NULL, sleeper, (void*) &data);
     pthread_join(t, NULL);
 
+    std::cout << "\nNum worker thread: " << nworkers << std::endl;
+    std::cout << "Num clients: " << nclients << std::endl;
+    std::cout << "Time to live: " << data.ttl << std::endl;
+
     return 0;
 }
 
