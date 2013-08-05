@@ -50,7 +50,6 @@ int main(int argc, char *argv[]) {
 
     cache = new DataCache();
     thpool = new threadpool(nworkers);
-
     clients = new client_buffer[nclients+1];
 
     /* clients[0] = writer
@@ -102,7 +101,7 @@ void writer_routine(void *arg) {
     usleep(AVG_LATENCY_TIME);
 }
 
-void *client_routine(void *arg) { //passare selettore di qualche tipo, tgz ne so porcomondo
+void *client_routine(void *arg) {
     client_buffer *buffer = (client_buffer *) arg;
     void (*client_task)(void*);
 
@@ -111,14 +110,9 @@ void *client_routine(void *arg) { //passare selettore di qualche tipo, tgz ne so
     while (true) {
         /* genera richiesta
          * scrive richiesta sul buffer */
-//        usleep(AVG_LATENCY_TIME / 2);
 
-//        usleep(AVG_LATENCY_TIME); //latency
         buffer->thpool->add_task(client_task, arg);
-//        usleep(AVG_LATENCY_TIME); //latency
         pthread_cond_wait(&buffer->cond, &buffer->mutex);
-
-//        usleep(2 * AVG_LATENCY_TIME);
     }
 
     return NULL;

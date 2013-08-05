@@ -22,7 +22,7 @@ Slabs::Slabs(const struct config init_settings) {
 
     while (++i < POWER_LARGEST && size <= init_settings.item_size_max / init_settings.factor) {
         /* make sure items are always n-byte aligned */
-        if (size % CHUNK_ALIGN_BYTES != 0)
+        if (size % CHUNK_ALIGN_BYTES)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
         this->slabclass[i].size = size;

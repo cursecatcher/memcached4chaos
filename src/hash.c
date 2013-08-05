@@ -8,7 +8,7 @@
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 uint32_t hash(const void *key, size_t length, const uint32_t initval) {
     uint32_t a,b,c; /* internal state */
-    union { const void *ptr; size_t i; } u;     /* needed for Mac Powerbook G4 */
+    union { const void *ptr; size_t i; } u;  /* to cast key to (size_t) happily */
 
     /* Set up the internal state */
     a = b = c = 0xdeadbeef + ((uint32_t)length) + initval;
@@ -25,16 +25,7 @@ uint32_t hash(const void *key, size_t length, const uint32_t initval) {
             mix(a,b,c);
         }
 
-        /*----------------------------- handle the last (probably partial) block */
-        /*
-         * "k[2]&0xffffff" actually reads beyond the end of the string, but
-         * then masks off the part it's not allowed to read.  Because the
-         * string is aligned, the masked-off tail is in the same word as the
-         * rest of the string.  Every machine with memory protection I've seen
-         * does it on word boundaries, so is OK with this.  But VALGRIND will
-         * still catch it and complain.  The masking trick does make the hash
-         * noticably faster for short strings (like English words).
-         */
+        /*------ handle the last (probably partial) block */
         switch(length) {
             case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
             case 11: c+=k[2]&0xffffff; b+=k[1]; a+=k[0]; break;
@@ -153,15 +144,6 @@ uint32_t hash( const void *key, size_t length, const uint32_t initval) {
         }
 
         /*----------------------------- handle the last (probably partial) block */
-        /*
-         * "k[2]<<8" actually reads beyond the end of the string, but
-         * then shifts out the part it's not allowed to read.  Because the
-         * string is aligned, the illegal read is in the same word as the
-         * rest of the string.  Every machine with memory protection I've seen
-         * does it on word boundaries, so is OK with this.  But VALGRIND will
-         * still catch it and complain.  The masking trick does make the hash
-         * noticably faster for short strings (like English words).
-         */
         switch(length) {
             case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
             case 11: c+=k[2]&0xffffff00; b+=k[1]; a+=k[0]; break;
