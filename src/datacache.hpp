@@ -16,9 +16,9 @@ private:
     LRU_Queues *lru;
 
 public:
-    DataCache() {
+    DataCache(size_t MB_to_allocate = 64) {
         //init config
-        this->config.maxbytes = 64 * 1024 * 1024; // 64 MB
+        this->config.maxbytes = MB_to_allocate * 1024 * 1024;
         this->config.preallocate = false;
         this->config.factor = 1.25;
         this->config.chunk_size = 48;
