@@ -73,6 +73,8 @@ int main(int argc, char *argv[]) {
 
     /* clients[1] = writer
      * clients[2...nclients-2] = reader */
+    int err;
+
     for (int i = 0; i <= nclients; i++) {
         pthread_mutex_init(&clients[i].mutex, NULL);
         pthread_cond_init(&clients[i].cond, NULL);
@@ -82,9 +84,12 @@ int main(int argc, char *argv[]) {
         clients[i].index = i;
         clients[i].cout_mutex = &cout_mutex;
         clients[i].nreq = &nreq;
-        if (pthread_create(&clients[i].tid, NULL, client_routine, &clients[i])) {
-            std::cout << "Cannot create thread" << std::endl;
-            break;
+
+        err = pthread_create(&clients[i].tid, NULL, client_routine, &clients[i]);
+
+        if (err) {
+            std::cerr << "Cannot create thread #" << i+1 << std::endl;
+            abort();
         }
     }
 
