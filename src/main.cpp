@@ -89,11 +89,11 @@ int main(int argc, char *argv[]) {
 
         if (err) {
             std::cerr << "Cannot create thread #" << i+1 << std::endl;
-            abort();
+            std::cerr << "Aborted." << std::endl;
+            return -1;
         }
     }
 
-//    clients[0].valuebuffer = argv[3];
     pthread_t t;
     data.cout_mutex = &cout_mutex;
     data.thpool = thpool;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "\nNum worker thread: " << nworkers << std::endl;
     std::cout << "Num clients: " << nclients << std::endl;
-    std::cout << nreq << " reqs in " << data.ttl << " seconds" << std::endl;
+    std::cout << nreq << " reqs in " << data.ttl << " second(s)" << std::endl;
 
     return 0;
 }
@@ -154,6 +154,7 @@ void *client_routine(void *arg) {
 
         buffer->thpool->add_task(client_task, arg);
         pthread_cond_wait(&buffer->cond, &buffer->mutex);
+
     }
 
     return NULL;
