@@ -11,4 +11,5 @@ TO DO LIST:
 - verificare rimovibilità CAS --> OK
 
 **** ottimizzazione ****
-- svolgere le operazioni di hashing fuori dai lock
+- svolgere le operazioni di hashing fuori dai lock  --> OK
+- aggiungere hashvalue alla struttura item --> OK
