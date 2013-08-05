@@ -40,6 +40,7 @@ typedef struct _hash_item {
 
     uint32_t nbytes; // The total size of the data (in bytes)
     uint16_t nkey; // The total length of the key (in bytes)
+    uint32_t hv; // The hashvalue of the key
     uint16_t iflag; // Flags associated with the item
     unsigned short refcount;
     uint8_t slabs_clsid; // which slab class we're in
