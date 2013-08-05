@@ -10,3 +10,5 @@ TO DO LIST:
   item->iflag & ITEM_WITH_CAS --> OK 
 - verificare rimovibilità CAS --> OK
 
+**** ottimizzazione ****
+- svolgere le operazioni di hashing fuori dai lock
