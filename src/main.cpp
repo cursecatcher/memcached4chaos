@@ -82,7 +82,10 @@ int main(int argc, char *argv[]) {
         clients[i].index = i;
         clients[i].cout_mutex = &cout_mutex;
         clients[i].nreq = &nreq;
-        pthread_create(&clients[i].tid, NULL, client_routine, &clients[i]);
+        if (pthread_create(&clients[i].tid, NULL, client_routine, &clients[i])) {
+            std::cout << "Cannot create thread" << std::endl;
+            break;
+        }
     }
 
 //    clients[0].valuebuffer = argv[3];
@@ -95,7 +98,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "\nNum worker thread: " << nworkers << std::endl;
     std::cout << "Num clients: " << nclients << std::endl;
-    std::cout << "Time to live: " << data.ttl << std::endl;
+    std::cout << nreq << " reqs in " << data.ttl << " seconds" << std::endl;
 
     return 0;
 }
@@ -105,11 +108,13 @@ void reader_routine(void *arg) {
     bool op_ok;
 
     op_ok = buffer->cache->get_item(buffer->keybuffer, buffer->val_len, &buffer->valuebuffer);
+    (void) op_ok;
+
     pthread_cond_signal(&buffer->cond);
 
     pthread_mutex_lock(buffer->cout_mutex);
     (*buffer->nreq)++;
-    std::cout << "req #" << *buffer->nreq << "...get " << (op_ok ? "done" : "failed") << std::endl;
+//    std::cout << "req #" << *buffer->nreq << "...get " << (op_ok ? "done" : "failed") << std::endl;
     pthread_mutex_unlock(buffer->cout_mutex);
 
     usleep(AVG_LATENCY_TIME);
@@ -120,11 +125,13 @@ void writer_routine(void *arg) {
     bool op_ok;
 
     op_ok = buffer->cache->store_item(buffer->keybuffer, buffer->valuebuffer, buffer->val_len);
+    (void) op_ok;
+
     pthread_cond_signal(&buffer->cond);
 
     pthread_mutex_lock(buffer->cout_mutex);
     (*buffer->nreq)++;
-    std::cout << "req #" << *buffer->nreq << "...store " << (op_ok ? "done" : "failed") << std::endl;
+//    std::cout << "req #" << *buffer->nreq << "...store " << (op_ok ? "done" : "failed") << std::endl;
     pthread_mutex_unlock(buffer->cout_mutex);
 
     usleep(AVG_LATENCY_TIME);
