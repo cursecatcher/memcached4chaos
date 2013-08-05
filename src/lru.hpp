@@ -30,7 +30,7 @@ private:
     void item_link_q(hash_item *it);
     void item_unlink_q(hash_item *it);
     hash_item *do_item_alloc(const char *key, const size_t nkey, const int nbytes);
-    hash_item *do_item_get(const char *key, const size_t nkey);
+    hash_item *do_item_get(const char *key, const size_t nkey, const uint32_t hv);
     int do_item_link(hash_item *it);
     void do_item_unlink(hash_item *it);
     void do_item_release(hash_item *it);
@@ -62,9 +62,10 @@ public:
      * @return pointer to the item if it exists or NULL otherwise */
     inline hash_item *item_get(const char *key, const size_t nkey) {
         hash_item *it;
+        uint32_t hv = hash(key, nkey);
 
         this->lock_cache();
-        it = this->do_item_get(key, nkey);
+        it = this->do_item_get(key, nkey, hv);
         this->unlock_cache();
         return it;
     }
@@ -76,7 +77,7 @@ public:
         this->do_item_release(it);
         this->unlock_cache();
     }
-
+/////////////////crea tipo hashvalue_o qualcosa del genere PLS
     /** Unlink the item from the hash table (make it inaccessible)
      * @param it the item to unlink */
     inline void item_unlink(hash_item *it) {
@@ -88,6 +89,8 @@ public:
     /** Store an item in the cache
      * @param item the item to store */
     inline void store_item(hash_item *it) {
+        it->hv = hash(this->item_get_key(it), it->nkey);
+
         this->lock_cache();
         this->do_store_item(it);
         this->unlock_cache();

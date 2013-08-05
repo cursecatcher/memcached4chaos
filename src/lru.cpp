@@ -134,8 +134,8 @@ hash_item *LRU_Queues::do_item_alloc(const char *key, const size_t nkey, const i
     return it;
 }
 
-hash_item *LRU_Queues::do_item_get(const char *key, const size_t nkey) {
-    hash_item *it = this->assoc->assoc_find(hash(key, nkey), key, nkey);
+hash_item *LRU_Queues::do_item_get(const char *key, const size_t nkey, const uint32_t hv) {
+    hash_item *it = this->assoc->assoc_find(hv, key, nkey);
 
     if (it) {
         it->refcount++;
@@ -152,7 +152,7 @@ int LRU_Queues::do_item_link(hash_item *it) {
     it->iflag |= ITEM_LINKED;
     it->time = this->get_current_time();
 
-    this->assoc->assoc_insert(hash(this->item_get_key(it), it->nkey), it);
+    this->assoc->assoc_insert(it->hv, it);
     this->item_link_q(it);
 
     return 1;
@@ -163,7 +163,7 @@ void LRU_Queues::do_item_unlink(hash_item *it) {
         char *key = this->item_get_key(it);
 
         it->iflag &= ~ITEM_LINKED;
-        this->assoc->assoc_delete(hash(key, it->nkey), key, it->nkey);
+        this->assoc->assoc_delete(it->hv, key, it->nkey);
         this->item_unlink_q(it);
 
         if (it->refcount == 0)
@@ -215,7 +215,7 @@ void LRU_Queues::item_free(hash_item *it) {
 }
 
 void LRU_Queues::do_store_item(hash_item *it) {
-    hash_item *old_it = this->do_item_get(this->item_get_key(it), it->nkey);
+    hash_item *old_it = this->do_item_get(this->item_get_key(it), it->nkey, it->hv);
 
     if (old_it != NULL) {
         this->do_item_replace(old_it, it);
