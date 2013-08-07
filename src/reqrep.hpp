@@ -29,10 +29,11 @@ private:
     size_t _totbytes;
 
 
-    inline void init(const char *key, const size_t nkey, const void *data, const size_t nbytes) {
+    inline void init(const char *key, const size_t nkey, const void *data, const size_t nbytes, const opt_t op) {
         this->_key = (char*) malloc(nkey+1);
         this->_nkey = nkey;
         this->_nbytes = nbytes;
+        this->_req_type = op;
 
         memcpy((void*) this->_key, key, nkey);
         this->_key[nkey] = '\0';
@@ -85,7 +86,6 @@ private:
     }
 
 public:
-    // boh
     inline req_t(const void *data_serialized, const size_t totbytes) {
         this->_totbytes = totbytes;
         this->_serialized = (char*) malloc(totbytes);
@@ -95,72 +95,35 @@ public:
     }
 
     inline req_t(const char *key, const size_t nkey, opt_t op_to_do) {
-        this->init(key, nkey, NULL, 0);
-        this->_req_type = op_to_do;
+        this->init(key, nkey, NULL, 0, op_to_do);
         this->serialize();
     }
 
     // store
     inline req_t(const char *key, const size_t nkey, const void *data, const size_t nbytes) {
-        this->init(key, nkey, data, nbytes);
-        this->_req_type = TYPE_OP_SET;
+        this->init(key, nkey, data, nbytes, TYPE_OP_SET);
         this->serialize();
     }
 
     ~req_t() {
-        free(this->_key);
-        free(this->_data);
-        free(this->_serialized);
+        if (this->_key)         free(this->_key);
+        if (this->_data)        free(this->_data);
+        if (this->_serialized)  free(this->_serialized);
     }
 
-    inline char* key(size_t &nkey) {
-        nkey = this->_nkey;
-        return this->_key;
-    }
-
-    inline char* key() {
-        return this->_key;
-    }
-
-    inline size_t keylen() {
-        return this->_nkey;
-    }
-
-    inline void* data(size_t &nbytes) {
-        nbytes = this->_nbytes;
-        return this->_data;
-    }
-
-    inline void* data() {
-        return this->_data;
-    }
-
-    inline size_t datalen() {
-        return this->_nbytes;
-    }
-
-    inline opt_t op() {
-        return this->_req_type;
-    }
-
-    inline void* serialize(size_t &totbytes) {
-        totbytes = this->_totbytes;
-        return this->_serialized;
-    }
-
-    inline void* binary() {
-        return this->_serialized;
-    }
-
-    inline size_t size() {
-        return this->_totbytes;
-    }
+    inline char* key()      { return this->_key; }
+    inline size_t keylen()  { return this->_nkey; }
+    inline void* data()     { return this->_data; }
+    inline size_t datalen() { return this->_nbytes; }
+    inline opt_t op()       { return this->_req_type; }
+    inline void* binary()   { return this->_serialized; }
+    inline size_t size()    { return this->_totbytes; }
 };
 
 
 class rep_t {
 private:
-    void *_data; // only for GETs
+    void *_data;    // riservato per le GETs
     int32_t _nbytes;
 
     bool _valret;
@@ -172,7 +135,9 @@ private:
     char *_serialized;
     size_t _totbytes;
 
-    inline void init(const void *data, const int32_t nbytes) {
+    inline void init(const void *data, const int32_t nbytes, const opt_t op, const bool valret) {
+        this->_rep_type = op;
+        this->_valret = valret;
         this->_nbytes = nbytes;
 
         if (nbytes > 0) {
@@ -224,35 +189,25 @@ public:
     }
 
     inline rep_t(const void *data, const int32_t nbytes, const bool valret) {
-        this->_rep_type = TYPE_OP_GET;
-        this->_valret = valret;
-        this->init(data, nbytes);
-
+        this->init(data, nbytes, TYPE_OP_GET, valret);
         this->serialize();
     }
 
     inline rep_t(const bool valret, const opt_t op_done) {
-        this->_rep_type = op_done;
-        this->_valret = valret;
-        this->init(NULL, 0);
-
+        this->init(NULL, 0, op_done, valret);
         this->serialize();
     }
 
-    inline void* data() {
-        return this->_data;
+    ~rep_t() {
+        if (this->_data)        free(this->_data);
+        if (this->_serialized)  free(this->_serialized);
     }
 
-    inline int32_t datalen() {
-        return this->_nbytes;
-    }
-
-    inline size_t size() {
-        return this->_totbytes;
-    }
-
-    inline void* binary() {
-        return (void*) this->_serialized;
-    }
+    inline void* data()         { return this->_data; }
+    inline int32_t datalen()    { return this->_nbytes; }
+    inline bool valret()        { return this->_valret; }
+    inline size_t size()        { return this->_totbytes; }
+    inline void* binary()       { return (void*) this->_serialized; }
 };
+
 #endif // REQREP_HPP
