@@ -4,8 +4,14 @@ LIBS = -lpthread
 OPT = -O2
 FLAGS = -Wall -Wextra -pedantic
 
-all: main.o datacache.hpp threadpool.o lru.o assoc.o slabs.o hash.o const_types.h
-	$(CC) -o $(NAME) $^ $(OPT) $(LIBS) $(FLAGS)
+zmqcache: zmqcache.cpp datacache.hpp lru.o assoc.o slabs.o hash.o const_types.h
+	$(CC) -o zmqcache $^ $(OPT) $(LIBS) -lzmq $(FLAGS)
+
+zmqclient: zmqclient.cpp reqrep.hpp
+	$(CC) -o zmqclient $^ $(OPT) $(LIBS) -lzmq $(FLAGS)
+
+#cache: main.o datacache.hpp threadpool.o lru.o assoc.o slabs.o hash.o const_types.h
+#	$(CC) -o $(NAME) $^ $(OPT) $(LIBS) $(FLAGS)
 
 main.o: main.cpp
 	$(CC) -c $^ $(OPT) $(LIBS) $(FLAGS)
