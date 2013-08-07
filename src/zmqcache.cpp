@@ -1,6 +1,7 @@
 #include <zmq.hpp>
 #include <iostream>
-#include <unistd.h>
+#include <cstdio>
+#include <unistd.h> // a che cazzo serve???
 
 #include "datacache.hpp"
 //#include "threadpool.hpp"
@@ -16,7 +17,16 @@ typedef struct {
 void *server(void *arg);
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    int nworker;
+
+    if (argc != 2 || sscanf(argv[1], "%d", &nworker) != 1 || nworker <= 0) {
+        std::cerr << "Usage: " << argv[0] << "num_workert_thread" << std::endl;
+        std::cerr << "num_worker_thread must be an integer greater than 0" << std::endl;
+        std::cerr << "Aborted" << std::endl;
+        return -1;
+    }
+
     pid_t pid = getpid();
     datathread_t data;
     zmq::context_t context(1);
@@ -31,11 +41,11 @@ int main() {
 
     std::cout << "Pid process: " << pid << std::endl;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < nworker; i++) {
         pthread_t tid;
         if (pthread_create(&tid, NULL, server, (void*) &data)) {
             std::cout << "Cannot create thread #" << i+1 << ". Aborted." << std::endl;
-            return -1;
+            return -2;
         }
     }
 
