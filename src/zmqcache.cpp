@@ -3,13 +3,16 @@
 #include <cstdio>
 #include <unistd.h> // a che cazzo serve???
 
-#include "datacache.hpp"
+#include "cache/datacache.hpp"
 //#include "threadpool.hpp"
 #include "reqrep.hpp"
 
 typedef struct {
     DataCache *cache;
     zmq::context_t *context;
+
+    uint64_t nreq;
+    pthread_mutex_t nreq_lock;
 } datathread_t;
 
 /* accetta le richieste via socket
@@ -33,6 +36,8 @@ int main(int argc, char *argv[]) {
 
     data.cache = new DataCache();
     data.context = &context;
+    data.nreq = 0;
+    pthread_mutex_init(&data.nreq_lock, NULL);
 
     zmq::socket_t clients (context, ZMQ_ROUTER);
     clients.bind("tcp://*:5555");
@@ -72,7 +77,7 @@ void *server(void *arg) {
     datareplied *rep = NULL;
 
     while (true) {
-        std::cout << "Thread in attesa...\n";
+//        std::cout << "Thread in attesa...\n";
 
         zmq::message_t request;
         socket.recv(&request);
@@ -83,30 +88,39 @@ void *server(void *arg) {
         // eseguie l'operazione richiesta
         switch (req->op_code()) {
             case TYPE_OP_GET:
-                std::cout << "richiesta get(" << req->key() << ")\n";
+//                std::cout << "richiesta get(" << req->key() << ")\n";
                 success = data->cache->get_item(req->key(), bufflen, &buffer);
                 rep = new datareplied(tempbuffer, buffer, (size_t) bufflen, TYPE_OP_GET, success);
                 break;
             case TYPE_OP_SET:
-                std::cout << "richiesta store(" << req->key() << ", " << req->datasize() << ")\n";
+//                std::cout << "richiesta store(" << req->key() << ", " << req->datasize() << ")\n";
                 success = data->cache->store_item(req->key(), req->data(), req->datasize());
                 rep = new datareplied(tempbuffer, (void*) NULL, 0, TYPE_OP_SET, success);
                 break;
             case TYPE_OP_DELETE:
-                std::cout << "richiesta delete(" << req->key() << ")\n";
+//                std::cout << "richiesta delete(" << req->key() << ")\n";
                 success = data->cache->delete_item(req->key());
                 rep = new datareplied(tempbuffer, (void*) NULL, 0, TYPE_OP_DELETE, success);
                 break;
+            case TYPE_OP_SHUT_DOWN:
+                pthread_mutex_lock(&data->nreq_lock);
+                std::cout << "Tot reqs:" << data->nreq << std::endl;
+                // killare thread ?
+                abort();
         }
 
-        std::cout << "byte reply: " << rep->size() << std::endl;
+//        std::cout << "byte reply: " << rep->size() << std::endl;
 
         zmq::message_t reply(rep->size());
         memcpy((void *) reply.data(), tempbuffer, rep->size());
         socket.send(reply);
 
-//        delete(req);
-//        delete(rep);
+        pthread_mutex_lock(&data->nreq_lock);
+        (data->nreq)++;
+        pthread_mutex_unlock(&data->nreq_lock);
+
+        delete(req);
+        delete(rep);
     }
 
     return NULL;
