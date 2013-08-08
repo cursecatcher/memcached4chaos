@@ -6,16 +6,11 @@
 #include <cstdlib>
 
 typedef enum {
-    TYPE_OP_SET = 1,
+    TYPE_OP_SHUT_DOWN = 0,
+    TYPE_OP_SET,
     TYPE_OP_GET,
     TYPE_OP_DELETE
 } opt_t;
-
-struct req_header {
-    opt_t _op;
-    size_t _nkey;
-    size_t _nbytes;
-};
 
 
 /* req_t::bynary()
@@ -24,7 +19,11 @@ struct req_header {
  * +-----+------+--------+--//---+----+---//---+ */
 class datarequested {
 private:
-    struct req_header _header;
+    struct req_header {
+        opt_t _op;
+        size_t _nkey;
+        size_t _nbytes;
+    } _header;
     size_t _totbytes;
     char *_serialized;
     char *_key;
@@ -39,26 +38,39 @@ public:
         this->_serialized = (char*) serialized;
         this->_totbytes = totbytes;
         memcpy((void*) &this->_header, serialized, sizeof(struct req_header));
-        this->_key = this->_serialized + sizeof(struct req_header);
+        this->_key = this->_header._nkey > 0 ?
+                     this->_serialized + sizeof(struct req_header) : NULL;
         this->_data = this->_header._nbytes > 0 ?
-                      this->_key + this->_header._nkey + 1 :
-                      NULL;
+                      this->_key + this->_header._nkey + 1 : NULL;
     }
 
     datarequested(void *dest, char *key, size_t nkey, void *data, size_t nbytes, opt_t op) {
+        this->_serialized = (char*) dest; // it points to dest (current buffer)
+        //header
         this->_header._nkey = nkey;
         this->_header._nbytes = nbytes;
         this->_header._op = op;
-
-        this->_serialized = (char*) dest;
         memcpy(dest, (void*) &this->_header, sizeof(struct req_header));
-
-        memcpy((void*) (this->_serialized + sizeof(struct req_header)), key, nkey);
-        size_t offset = sizeof(struct req_header) + nkey;
-        this->_serialized[offset++] = '\0';
-
-        memcpy((void*) (this->_serialized + offset), data, nbytes);
-
+        //key, if it's present
+        size_t offset = sizeof(struct req_header);
+        if (this->_header._nkey > 0) {
+            this->_key = this->_serialized + offset;
+            memcpy((void*) this->_key, (void*) key, nkey);
+            offset += this->_header._nkey;
+        }
+        else {
+            this->_key = NULL;
+        }
+        this->_serialized[offset++] = '\0'; // string terminator (silvester callone)
+        //data, if it's present
+        if (this->_header._nbytes > 0) {
+            this->_data = this->_serialized + offset;
+            memcpy((void*) this->_data, data, nbytes);
+        }
+        else {
+            this->_data = NULL;
+        }
+        //total size
         this->_totbytes = offset + this->_header._nbytes;
     }
 
@@ -75,15 +87,14 @@ public:
  * +-----+--------+--------+--//---+
  * | opt | valret | nbytes |  data |
  * +-----+--------+--------+--//---+ */
-struct rep_header {
-    opt_t _op;
-    bool _valret;
-    size_t _nbytes;
-};
 
 class datareplied {
 private:
-    rep_header _header;
+    struct rep_header {
+        opt_t _op;
+        bool _valret;
+        size_t _nbytes;
+    } _header;
     size_t _totbytes;
     char *_serialized;
     char *_data;
