@@ -1,29 +1,38 @@
-NAME = cache
+SERVER_NAME = zmqcache
+CLIENT_NAME = zmqclient
+
+
 CC = g++
-LIBS = -lpthread
+LIBS = -lpthread -lzmq
 OPT = -O2
-FLAGS = -Wall -Wextra -pedantic
+WFLAGS = -Wall -Wextra -pedantic
+FLAGS = $(OPT) $(WFLAGS)
 
-zmqcache: zmqcache.cpp datacache.hpp lru.o assoc.o slabs.o hash.o const_types.h
-	$(CC) -o zmqcache $^ $(OPT) $(LIBS) -lzmq $(FLAGS)
+all:
+	make $(SERVER_NAME) && make $(CLIENT_NAME)
 
-zmqclient: zmqclient.cpp reqrep.hpp
-	$(CC) -o zmqclient $^ $(OPT) $(LIBS) -lzmq $(FLAGS)
+$(SERVER_NAME): zmqcache.cpp cache/datacache.hpp lru.o assoc.o slabs.o hash.o cache/const_types.h
+	$(CC) -o $(SERVER_NAME) $^ $(LIBS) $(FLAGS)
 
-slabs.o: slabs.cpp slabs.hpp
-	$(CC) -c $^ $(OPT) $(LIBS) $(FLAGS)
+$(CLIENT_NAME): zmqclient.cpp reqrep.hpp
+	$(CC) -o $(CLIENT_NAME) $^ $(LIBS) $(FLAGS)
 
-assoc.o: assoc.cpp assoc.hpp
-	$(CC) -c $^ $(OPT) $(LIBS) $(FLAGS)
 
-lru.o: lru.cpp lru.hpp
-	$(CC) -c $^ $(OPT) $(LIBS) $(FLAGS)
+slabs.o: cache/slabs.cpp cache/slabs.hpp
+	$(CC) -c $^ $(LIBS) $(FLAGS)
 
-hash.o: hash.c hash.h
-	$(CC) -c $^ $(OPT) $(LIBS) $(FLAGS)
+assoc.o: cache/assoc.cpp cache/assoc.hpp
+	$(CC) -c $^ $(LIBS) $(FLAGS)
+
+lru.o: cache/lru.cpp cache/lru.hpp
+	$(CC) -c $^ $(LIBS) $(FLAGS)
+
+hash.o: cache/hash.c cache/hash.h
+	$(CC) -c $^ $(LIBS) $(FLAGS)
+
 
 clean:
-	rm -f *.o *.gch
+	rm -f *.o cache/*.gch
 
 cleanall:
-	rm -f *.o *.gch $(NAME)
+	make clean && rm -f $(CLIENT_NAME) $(SERVER_NAME)
