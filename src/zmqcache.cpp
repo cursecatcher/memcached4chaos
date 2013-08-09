@@ -1,7 +1,7 @@
 #include <zmq.hpp>
 #include <iostream>
 #include <cstdio>
-#include <unistd.h> // a che cazzo serve???
+#include <unistd.h> // getpid()
 
 #include "cache/datacache.hpp"
 //#include "threadpool.hpp"
@@ -12,11 +12,11 @@ typedef struct {
     zmq::context_t *context;
 
     uint64_t nreq;
+    uint64_t delta;
     pthread_mutex_t nreq_lock;
 } datathread_t;
 
-/* accetta le richieste via socket
- * gestisce la thread pool */
+/* accetta le richieste via socket */
 void *server(void *arg);
 
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     data.cache = new DataCache();
     data.context = &context;
-    data.nreq = 0;
+    data.nreq = data.delta = 0;
     pthread_mutex_init(&data.nreq_lock, NULL);
 
     zmq::socket_t clients (context, ZMQ_ROUTER);
@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
             return -2;
         }
     }
-
 
     //  Connect work threads to client threads via a queue
     zmq::proxy(clients, workers, NULL);
@@ -103,13 +102,17 @@ void *server(void *arg) {
                 rep = new datareplied(tempbuffer, (void*) NULL, 0, TYPE_OP_DELETE, success);
                 break;
             case TYPE_OP_SHUT_DOWN:
-                pthread_mutex_lock(&data->nreq_lock);
-                std::cout << "Tot reqs:" << data->nreq << std::endl;
-                // killare thread ?
-                abort();
-        }
+                uint64_t totreq, deltareq;
 
-//        std::cout << "byte reply: " << rep->size() << std::endl;
+                pthread_mutex_lock(&data->nreq_lock);
+                deltareq = data->delta;
+                totreq = data->delta = data->nreq;
+                pthread_mutex_unlock(&data->nreq_lock);
+
+                std::cout << "Tot reqs:" << totreq << " -- Delta: " << deltareq << " -- Inc: " << totreq - deltareq << std::endl;
+                rep = new datareplied(tempbuffer, (void*) NULL, 0, TYPE_OP_SHUT_DOWN, success);
+                break;
+        }
 
         zmq::message_t reply(rep->size());
         memcpy((void *) reply.data(), tempbuffer, rep->size());
