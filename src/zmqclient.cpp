@@ -89,8 +89,6 @@ void *client(void *arg) {
 
         rep = new datareplied(sreply.size(), sreply.data());
 
-//        std::cout << "Esito operazione: " << rep->valret() << std::endl;
-
         delete(req);
         delete(rep);
     }
@@ -113,8 +111,8 @@ void *shutdown_thr(void *arg) {
     memcpy(request.data(), req->binary(), req->size());
     socket.send(request);
 
-//    zmq::message_t reply;
-//    socket.recv(&reply);
+    zmq::message_t reply;
+    socket.recv(&reply);
 
     return NULL;
 }
