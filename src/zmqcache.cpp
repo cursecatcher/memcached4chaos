@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
     pid_t pid = getpid();
     datathread_t data;
-    zmq::context_t context(1);
+    zmq::context_t context(2);
 
     data.cache = new DataCache();
     data.context = &context;
@@ -109,7 +109,9 @@ void *server(void *arg) {
                 totreq = data->delta = data->nreq;
                 pthread_mutex_unlock(&data->nreq_lock);
 
-                std::cout << "Tot reqs:" << totreq << " -- Delta: " << deltareq << " -- Inc: " << totreq - deltareq << std::endl;
+                deltareq = totreq - deltareq;
+
+                std::cout << "Tot reqs:" << totreq << " -- Incr: " << deltareq << std::endl;
                 rep = new datareplied(tempbuffer, (void*) NULL, 0, TYPE_OP_SHUT_DOWN, success);
                 break;
         }

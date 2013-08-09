@@ -3,6 +3,8 @@
 #include <zmq.hpp>
 #include "reqrep.hpp"
 
+#define IP_SERVER "tcp://141.108.249.4:5555"
+
 typedef struct {
     char *key;
     void *value;
@@ -60,7 +62,8 @@ void *client(void *arg) {
     zmq::context_t context(1);
 
     zmq::socket_t socket(context, ZMQ_REQ);
-    socket.connect("tcp://localhost:5555");
+//    socket.connect("tcp://localhost:5555");
+    socket.connect(IP_SERVER);
 
     int nthread;
 
@@ -102,7 +105,7 @@ void *shutdown_thr(void *arg) {
     zmq::context_t context(1);
 
     zmq::socket_t socket(context, ZMQ_REQ);
-    socket.connect("tcp://localhost:5555");
+    socket.connect(IP_SERVER);
 
     void *buffer = malloc(1024);
 
