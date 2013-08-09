@@ -66,7 +66,7 @@ void *client(void *arg) {
 
     pthread_mutex_lock(&data->init_lock);
     nthread = nthr++;
-    std::cout << "Client #" << nthread + 1 << " pronto all'azione!" << std::endl;
+//    std::cout << "Client #" << nthread + 1 << " pronto all'azione!" << std::endl;
     pthread_mutex_unlock(&data->init_lock);
 
     void *buffer = malloc(1024);
