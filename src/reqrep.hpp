@@ -6,12 +6,11 @@
 #include <cstdlib>
 
 typedef enum {
-    TYPE_OP_SHUT_DOWN = 0,
-    TYPE_OP_SET,
-    TYPE_OP_GET,
-    TYPE_OP_DELETE
+    CODE_OP_SHUT_DOWN = 0,
+    CODE_OP_SET_KEY_VALUE,
+    CODE_OP_GET_VALUE_BY_KEY,
+    CODE_OP_DELETE_BY_KEY
 } opt_t;
-
 
 /* req_t::bynary()
  * +-----+------+--------+--//---+ ---+---//---+
