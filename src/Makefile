@@ -11,7 +11,7 @@ FLAGS = $(LIBS) $(OPT) $(WFLAGS)
 all:
 	make --directory=cache/
 	make $(SERVER_NAME) $(CLIENT_NAME)
-#	make $(CLIENT_NAME)
+
 
 $(SERVER_NAME): zmqcache.cpp cache/*.o
 	$(CC) -o $@ $^ $(FLAGS)
