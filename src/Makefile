@@ -13,15 +13,22 @@ all:
 	make $(SERVER_NAME) $(CLIENT_NAME)
 
 
-$(SERVER_NAME): zmqcache.cpp cache/*.o
+$(SERVER_NAME): zmqcache.o cache/*.o
 	$(CC) -o $@ $^ $(FLAGS)
 
-$(CLIENT_NAME): zmqclient.cpp reqrep.hpp
+$(CLIENT_NAME): zmqclient.o reqrep.hpp
 	$(CC) -o $@ $^ $(FLAGS)
+
+
+zmqcache.o: zmqcache.cpp zmqcache.hpp
+	$(CC) -c $^ $(FLAGS)
+
+zmqclient.o: zmqclient.cpp zmqclient.hpp
+	$(CC) -c $^ $(FLAGS)
 
 
 clean:
-	rm -f cache/*.o cache/*.gch
+	rm -f *.o *.gch && make --directory=cache/ clean
 
 cleanall:
 	make clean && rm -f $(CLIENT_NAME) $(SERVER_NAME)
