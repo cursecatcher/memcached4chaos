@@ -1,121 +1,61 @@
-#include <iostream>
-#include <cstring>
-#include <zmq.hpp>
-#include "reqrep.hpp"
+#include "zmqclient.hpp"
 
-#define IP_SERVER "tcp://141.108.249.4:5555"
+zmqClient::zmqClient(unsigned nvirtualclient) {
+    this->nvirtualclient = nvirtualclient;
+    this->stopped = false;
+    this->runned = false;
 
-typedef struct {
-    char *key;
-    void *value;
-    size_t keylen;
-    size_t valuelen;
-    pthread_mutex_t init_lock;
-} datathread_t;
-
-int nthr = 0;
-
-void *client(void *arg);
-void *shutdown_thr(void *arg);
-
-int main(int argc, char *argv[]) {
-    int nclient, ttr;
-
-    if (argc != 3 || sscanf(argv[1], "%d", &nclient) != 1 ||
-        sscanf(argv[2], "%d", &ttr) != 1 || nclient < 1 || ttr < 1) {
-        std::cerr << "Usage: " << argv[0] << " 'num_client' 'time_to_run'" << std::endl;
-        std::cerr << "Aborted." << std::endl;
-        return -1;
-    }
-
-    datathread_t data;
-
-    pthread_mutex_init(&data.init_lock, NULL);
-    data.key = (char*) malloc(100);
-    data.value = (char*) malloc(100);
-
-    strcpy(data.key, "giorgio");
-    strcpy((char*) data.value, "mastrota");
-    data.keylen = strlen(data.key);
-    data.valuelen = strlen((char*)data.value);
-
-    pthread_t tid;
-    for (int i = 0; i < nclient; i++) {
-
-        if (pthread_create(&tid, NULL, client, &data)) {
-            std::cout << "Cannot create thread #" << i+1 << ". Aborted." << std::endl;
-            return -2;
-        }
-    }
-
-    sleep(ttr);
-
-    pthread_create(&tid, NULL, shutdown_thr, NULL);
-    pthread_join(tid, NULL);
-
-    return 0;
+    this->context = new zmq::context_t(1);
 }
 
+zmqClient::~zmqClient() {
+    delete(this->socket);
+    delete(this->context);
+}
 
-void *client(void *arg) {
-    datathread_t *data = (datathread_t*) arg;
-    zmq::context_t context(1);
+void zmqClient::connect(const char *address) {
+    this->socket = new zmq::socket_t(*(this->context), ZMQ_REQ);
+    this->socket->connect(address);
+}
 
-    zmq::socket_t socket(context, ZMQ_REQ);
-//    socket.connect("tcp://localhost:5555");
-    socket.connect(IP_SERVER);
+void zmqClient::work() {
+    char key[250+1];
+    char value[1024];
+    int keylen;
+    int valuelen;
 
-    int nthread;
-
-    pthread_mutex_lock(&data->init_lock);
-    nthread = nthr++;
-//    std::cout << "Client #" << nthread + 1 << " pronto all'azione!" << std::endl;
-    pthread_mutex_unlock(&data->init_lock);
-
-    void *buffer = malloc(1024);
+    char buffer[1024];
+    void *pbuffer = (void*) buffer;
     datarequested *req;
     datareplied *rep;
 
-    while (true) {
-        if (nthread == 0)
-            req = new datarequested(buffer, data->key, data->keylen, data->value, data->valuelen, TYPE_OP_SET);
-        else
-            req = new datarequested(buffer, data->key, data->keylen, NULL, 0, TYPE_OP_GET);
+    strcpy(key, "giorgio");     keylen = strlen(key);
+    strcpy(value, "mastrota");  valuelen = strlen(value);
 
-        zmq::message_t srequest(req->size());
 
-        memcpy(srequest.data(), req->binary(), req->size());
-        socket.send(srequest);
+    while (1) {
+        req = new datarequested(pbuffer, key, keylen, NULL, 0, CODE_OP_GET_VALUE_BY_KEY);
+        zmq::message_t request(req->size());
+        memcpy(request.data(), pbuffer, req->size());
+        this->socket->send(request);
 
-        zmq::message_t sreply;
-        socket.recv(&sreply);
+        zmq::message_t reply;
+        this->socket->recv(&reply);
+        rep = new datareplied(reply.size(), reply.data());
 
-        rep = new datareplied(sreply.size(), sreply.data());
-
+        //do something with reply
         delete(req);
         delete(rep);
-    }
 
-    return NULL;
+        std::cout << "Received" << std::endl;
+    }
 }
 
-void *shutdown_thr(void *arg) {
-    (void) arg;
+int main() {
+    zmqClient *client = new zmqClient(1);
 
-    zmq::context_t context(1);
+    client->connect("tcp://localhost:5555");
+    client->work();
 
-    zmq::socket_t socket(context, ZMQ_REQ);
-    socket.connect(IP_SERVER);
-
-    void *buffer = malloc(1024);
-
-    datarequested *req = new datarequested(buffer, NULL, 0, NULL, 0, TYPE_OP_SHUT_DOWN);
-    zmq::message_t request(req->size());
-    memcpy(request.data(), req->binary(), req->size());
-    socket.send(request);
-
-    zmq::message_t reply;
-    socket.recv(&reply);
-
-    return NULL;
+    return 0;
 }
