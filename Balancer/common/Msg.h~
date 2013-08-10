@@ -1,0 +1,11 @@
+#ifndef MSG_H
+#define MSG_H
+
+class Message{
+
+	public:
+		char msg[1024];
+		int seq;
+		long ts_send;
+		long ts_arrive;
+}

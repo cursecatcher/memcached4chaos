@@ -1,0 +1,19 @@
+#include <"Timer.h">
+
+long int Timer::timestamp(){
+	return time(NULL);
+}
+
+uint32_t Timer::usecs(){
+	struct timezone tz;
+	struct tm      *tm;
+	uint32_t         usecs;
+ 
+	gettimeofday(&tv, &tz);
+	tm = localtime(&tv.tv_sec);
+
+	usecs = tm->tm_hour * 3600 * 1000 + tm->tm_min * 60 * 1000 +
+		tm->tm_sec * 1000 + tv.tv_usec / 1000;
+	return usecs;
+}
+#endif

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_layout_file>
+	<ActiveTarget name="Release" />
+	<File name="main.cpp" open="0" top="0" tabpos="3">
+		<Cursor position="172" topLine="0" />
+	</File>
+	<File name="../common/bServer.cpp" open="1" top="0" tabpos="1">
+		<Cursor position="10362" topLine="208" />
+	</File>
+	<File name="../common/bServer.h" open="1" top="0" tabpos="2">
+		<Cursor position="2634" topLine="13" />
+	</File>
+</CodeBlocks_layout_file>

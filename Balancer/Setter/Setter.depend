@@ -1,0 +1,130 @@
+# depslib dependency file v1.0
+1351536915 source:/home/freakk/Tesi/Balancer/Setter/main.cpp
+	<iostream>
+	<pthread.h>
+	"../common/sSetter.h"
+	"../common/bClient.h"
+
+1355232940 /home/freakk/Tesi/Balancer/common/sSetter.h
+	<fcntl.h>
+	<stdlib.h>
+	<errno.h>
+	<netinet/in.h>
+	<resolv.h>
+	<sys/socket.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<pthread.h>
+	<signal.h>
+	<stdio.h>
+	<string.h>
+	"common.h"
+	"bClient.h"
+	<fstream>
+
+1351809076 /home/freakk/Tesi/Balancer/common/const.h
+	<ctime>
+	<string.h>
+	<vector>
+	<msgpack.hpp>
+	"fullIpAddress.h"
+
+1352147343 /home/freakk/Tesi/Balancer/common/bClient.h
+	<fcntl.h>
+	<stdlib.h>
+	<errno.h>
+	<netinet/in.h>
+	<resolv.h>
+	<sys/socket.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<stdio.h>
+	<string.h>
+	"common.h"
+
+1352844848 source:/home/freakk/Tesi/Balancer/common/bClient.cpp
+	"bClient.h"
+
+1355232935 source:/home/freakk/Tesi/Balancer/common/sSetter.cpp
+	"sSetter.h"
+	<ctime>
+	<time.h>
+	<iostream>
+	<string>
+	<map>
+	<msgpack.hpp>
+
+1351808994 /home/freakk/Tesi/Balancer/common/fullIpAddress.h
+	<msgpack.hpp>
+
+1351809052 source:/home/freakk/Tesi/Balancer/common/fullIpAddress.cpp
+	"fullIpAddress.h"
+
+1355153612 /home/freakk/Tesi/Balancer/common/common.h
+	<ctime>
+	<string.h>
+	<vector>
+	<msgpack.hpp>
+	<sys/time.h>
+
+1352844848 source:/home/freakk/Tesi/stable/Balancer/common/bClient.cpp
+	"bClient.h"
+
+1352147343 /home/freakk/Tesi/stable/Balancer/common/bClient.h
+	<fcntl.h>
+	<stdlib.h>
+	<errno.h>
+	<netinet/in.h>
+	<resolv.h>
+	<sys/socket.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<stdio.h>
+	<string.h>
+	"common.h"
+
+1353967554 /home/freakk/Tesi/stable/Balancer/common/common.h
+	<ctime>
+	<string.h>
+	<vector>
+	<msgpack.hpp>
+
+1351536915 source:/home/freakk/Tesi/stable/Balancer/Setter/main.cpp
+	<iostream>
+	<pthread.h>
+	"../common/sSetter.h"
+	"../common/bClient.h"
+
+1354028267 /home/freakk/Tesi/stable/Balancer/common/sSetter.h
+	<fcntl.h>
+	<stdlib.h>
+	<errno.h>
+	<netinet/in.h>
+	<resolv.h>
+	<sys/socket.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<pthread.h>
+	<signal.h>
+	<stdio.h>
+	<string.h>
+	"common.h"
+	"bClient.h"
+	<fstream>
+	<semaphore.h>
+
+1354020637 source:/home/freakk/Tesi/stable/Balancer/common/sSetter.cpp
+	"sSetter.h"
+	<ctime>
+	<time.h>
+	<iostream>
+	<string>
+	<map>
+	<msgpack.hpp>
+
+1354354999 /home/freakk/Tesi/Balancer/common/Timer.h
+	<sys/time.h>
+
+1354354352 /home/freakk/Tesi/Balancer/common/Timer.cpp
+	"Timer.h"
+
