@@ -2,7 +2,7 @@ SERVER_NAME = zmqcache
 CLIENT_NAME = zmqclient
 
 CC = g++
-LIBS = -lpthread -lzmq
+LIBS = -lpthread -I /opt/include/ -L /opt/lib/  -lzmq
 OPT = -O2
 WFLAGS = -Wall -Wextra -pedantic
 FLAGS = $(LIBS) $(OPT) $(WFLAGS)
