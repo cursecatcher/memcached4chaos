@@ -1,6 +1,3 @@
-SERVER_NAME = zmqcache
-CLIENT_NAME = zmqclient
-
 CC = g++
 LIBS = -lpthread -I /opt/include/ -L /opt/lib/  -lzmq
 OPT = -O2
@@ -9,26 +6,12 @@ FLAGS = $(LIBS) $(OPT) $(WFLAGS)
 
 
 all:
+	make --directory=local/
 	make --directory=cache/
-	make $(SERVER_NAME) $(CLIENT_NAME)
-
-
-$(SERVER_NAME): zmqcache.o cache/*.o
-	$(CC) -o $@ $^ $(FLAGS)
-
-$(CLIENT_NAME): zmqclient.o reqrep.hpp
-	$(CC) -o $@ $^ $(FLAGS)
-
-
-zmqcache.o: zmqcache.cpp zmqcache.hpp
-	$(CC) -c $^ $(FLAGS)
-
-zmqclient.o: zmqclient.cpp zmqclient.hpp
-	$(CC) -c $^ $(FLAGS)
-
+	make --directory=client-server/
 
 clean:
-	rm -f *.o *.gch && make --directory=cache/ clean
-
-cleanall:
-	make clean && rm -f $(CLIENT_NAME) $(SERVER_NAME)
+	rm -f *.o *.gch 
+	make --directory=cache/ clean 
+	make --directory=local/ clean 
+	make --directory=client-server clean
