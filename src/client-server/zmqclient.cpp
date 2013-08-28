@@ -17,69 +17,51 @@ void *client_thread(void* arg) {
     return NULL;
 }
 
-zmqClient::zmqClient(unsigned nvirtualclient, unsigned time_to_run) {
+zmqClient::zmqClient(int nvirtualclient, int time_to_run, string address) {
     this->nvirtualclient = nvirtualclient;
     this->ttr = time_to_run;
 
-    this->stopped = false;
-    this->runned = false;
-
     this->context = new zmq::context_t(1);
     this->sockets = new zmq::socket_t*[nvirtualclient];
+    this->address = address;
 
     this->tids = new pthread_t[nvirtualclient];
     pthread_cond_init(&this->cond, NULL);
-    pthread_mutex_init(&this->mutex, NULL);
 }
 
-zmqClient::~zmqClient() {
-    delete(this->tids);
-    delete(this->sockets);
-    delete(this->context);
-}
 
-void zmqClient::connect(const char *address) {
+void zmqClient::connect() {
     for (int i = 0; i < (int) this->nvirtualclient; i++) {
         this->sockets[i] = new zmq::socket_t(*(this->context), ZMQ_REQ);
-        this->sockets[i]->connect(address);
+        this->sockets[i]->connect(this->address.c_str());
     }
 }
 
 void zmqClient::work() {
-    thread_param_t params;
+    thread_param_t params = {this, 0};
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    params.client_class = this;
-
-    for (params.nsocket = 0; params.nsocket < (int) this->nvirtualclient; params.nsocket++) {
+    for (; params.nsocket < (int) this->nvirtualclient; params.nsocket++) {
         if (pthread_create(&this->tids[params.nsocket], NULL, client_thread, &params)) {
             std::cout << "Cannot create thread #" << params.nsocket << std::endl;
             abort();
         }
-        pthread_cond_wait(&this->cond, &this->mutex);
+        pthread_cond_wait(&this->cond, &mutex);
     }
 
-#ifdef VERBOSE
-    std::cout << "Init completed" << std::endl;
-#endif
+    pthread_t tid;
 
-/*
-    for (int i = 0; i < (int) this->nvirtualclient; i++) {
-        pthread_join(this->tids[i], NULL);
-    #ifdef VERBOSE
-        std::cout << "Thread #" << i << " terminated" << std::endl;
-    #endif
-    } */
+    if (pthread_create(&tid, NULL, thread_stopper, this)) {
+        std::cout << "Cannot create control thread" << std::endl;
+        abort();
+    }
 
-    sleep(this->ttr);
-    abort();
+    pthread_join(tid, NULL);
 }
 
 
 void zmqClient::worker(int nsocket) {
     zmq::socket_t *socket = this->sockets[nsocket];
-#ifdef VERBOSE
-    std::cout << "Created thread #" << nsocket << std::endl;
-#endif
     pthread_cond_signal(&this->cond);
 
     char key[250+1];
@@ -95,9 +77,11 @@ void zmqClient::worker(int nsocket) {
     strcpy(key, "giorgio");     keylen = strlen(key);
     strcpy(value, "mastrota");  valuelen = strlen(value);
 
+    while (true) {
+        req = nsocket == 0 ?
+              new datarequested(pbuffer, key, keylen, value, valuelen, CODE_OP_SET_KEY_VALUE) :
+              new datarequested(pbuffer, key, keylen, NULL, 0, CODE_OP_GET_VALUE_BY_KEY);
 
-    do {
-        req = new datarequested(pbuffer, key, keylen, NULL, 0, CODE_OP_GET_VALUE_BY_KEY);
         zmq::message_t request(req->size());
         memcpy(request.data(), pbuffer, req->size());
         socket->send(request);
@@ -109,9 +93,27 @@ void zmqClient::worker(int nsocket) {
         //do something with reply
         delete(req);
         delete(rep);
+    }
+}
 
-        std::cout << "Received by thread #" << nsocket << std::endl;
-    } while (!this->stopped);
+void zmqClient::stop() {
+    sleep(this->ttr);
+
+    zmq::socket_t socket(*(this->context), ZMQ_REQ);
+    socket.connect(this->address.c_str());
+
+    char buffer[32]; //basta e avanza
+    datarequested terminator(buffer, NULL, 0, NULL, 0, CODE_OP_SHUT_DOWN);
+
+    zmq::message_t request(terminator.size());
+    memcpy(request.data(), buffer, terminator.size());
+    socket.send(request);
+
+    zmq::message_t reply;
+    socket.recv(&reply);
+
+    for (int i = 0; i < this->nvirtualclient; i++)
+        pthread_cancel(this->tids[i]);
 }
 
 int main(int argc, char *argv[]) {
@@ -128,7 +130,7 @@ int main(int argc, char *argv[]) {
 
     zmqClient *client = new zmqClient((unsigned) numclient, ttl);
 
-    client->connect("tcp://localhost:5555");
+    client->connect();
     client->work();
 
     return 0;

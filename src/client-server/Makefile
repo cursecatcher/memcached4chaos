@@ -1,4 +1,4 @@
-SERVER_NAME = zmqcache
+SERVER_NAME = zmqserver
 CLIENT_NAME = zmqclient
 
 CC = g++
@@ -13,17 +13,17 @@ all:
 	make $(SERVER_NAME) $(CLIENT_NAME)
 
 
-$(SERVER_NAME): zmqcache.o ../cache/*.o
+$(SERVER_NAME): $(SERVER_NAME).o ../cache/*.o
 	$(CC) -o $@ $^ $(FLAGS)
 
-$(CLIENT_NAME): zmqclient.o reqrep.hpp
+$(CLIENT_NAME): $(CLIENT_NAME).o reqrep.hpp
 	$(CC) -o $@ $^ $(FLAGS)
 
 
-zmqcache.o: zmqcache.cpp zmqcache.hpp
+$(SERVER_NAME).o: $(SERVER_NAME).cpp $(SERVER_NAME).hpp
 	$(CC) -c $^ $(FLAGS)
 
-zmqclient.o: zmqclient.cpp zmqclient.hpp
+$(CLIENT_NAME).o: $(CLIENT_NAME).cpp $(CLIENT_NAME).hpp
 	$(CC) -c $^ $(FLAGS)
 
 

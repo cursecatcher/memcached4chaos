@@ -23,8 +23,6 @@ void *server_thread(void *arg) {
 
 zmqServer::zmqServer(int nworkerthreads) {
     this->nworkerthreads = nworkerthreads;
-    this->stopped = false;
-    this->runned = false;
 
     this->context = new zmq::context_t(1);
     this->sockets = new zmq::socket_t*[nworkerthreads];
@@ -32,18 +30,13 @@ zmqServer::zmqServer(int nworkerthreads) {
     this->cache = new DataCache();
 
     pthread_cond_init(&this->cond, NULL);
-    pthread_mutex_init(&this->mutex, NULL);
+    pthread_mutex_init(&this->mutex_nreq, NULL);
+    this->num_req = 0;
 }
-
-zmqServer::~zmqServer() {
-    this->stop();
-
-    delete(this->context);
-}
-
 
 void zmqServer::work() {
     thread_param_t params;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
     zmq::socket_t clients(*(this->context), ZMQ_ROUTER);
     zmq::socket_t workers(*(this->context), ZMQ_DEALER);
@@ -59,7 +52,7 @@ void zmqServer::work() {
             std::cerr << "Cannot create thread #" << params.nsocket << std::endl;
             abort();
         }
-        pthread_cond_wait(&this->cond, &this->mutex);
+        pthread_cond_wait(&this->cond, &mutex);
     }
 
     zmq::proxy(clients, workers, NULL);
@@ -67,7 +60,6 @@ void zmqServer::work() {
 
 void zmqServer::worker(int nsocket) {
     zmq::socket_t *socket = this->sockets[nsocket];
-    std::cout << "Thread #" << nsocket << " created" << std::endl;
     pthread_cond_signal(&this->cond);
 
     char cachebuffer[1024]; //preallocated
@@ -78,15 +70,13 @@ void zmqServer::worker(int nsocket) {
     datarequested *req = NULL;
     datareplied *rep = NULL;
     bool success_op = false;
+    bool closeall = false;
 
-    this->runned = true;
-
-    while (!this->stopped) {
+    while (!closeall) {
         zmq::message_t recv_message;
         socket->recv(&recv_message);
         req = new datarequested(recv_message.size(), recv_message.data());
 
-        //process recv_message
         switch (req->op_code()) {
             case CODE_OP_GET_VALUE_BY_KEY:
                 success_op = this->cache->get_item(req->key(), byte_used, &pcachebuffer);
@@ -101,6 +91,8 @@ void zmqServer::worker(int nsocket) {
                 rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_DELETE_BY_KEY, success_op);
                 break;
             case CODE_OP_SHUT_DOWN:
+                closeall = true;
+                rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_SHUT_DOWN, true);
                 break;
         }
 
@@ -109,16 +101,27 @@ void zmqServer::worker(int nsocket) {
 
         socket->send(message_to_send);
 
+        pthread_mutex_lock(&this->mutex_nreq);
+        this->num_req++;
+        pthread_mutex_unlock(&this->mutex_nreq);
+
         delete(req);
         delete(rep);
     }
-}
 
-void zmqServer::stop() {
-    if (this->runned)
-        this->stopped = true;
-}
+    usleep(10000);
 
+    pthread_mutex_lock(&this->mutex_nreq);
+    std::cout << "num_req = " << num_req << std::endl;
+
+    for (int i = 0; i < this->nworkerthreads; i++) {
+        if (i != nsocket)
+            pthread_cancel(this->tids[i]);
+    }
+
+    pthread_mutex_unlock(&this->mutex_nreq);
+    abort();
+}
 
 int main(int argc, char *argv[]) {
     int numworkers;

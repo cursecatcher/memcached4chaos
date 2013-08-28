@@ -79,7 +79,7 @@ public:
     inline size_t size()        { return this->_totbytes; }
     inline size_t keysize()     { return this->_header._nkey; }
     inline size_t datasize()    { return this->_header._nbytes; }
-    inline opt_t op_code()      { return this->_header._op; }
+    inline opt_t op_code()     { return this->_header._op; }
 };
 
 /* rep_t::binary()
@@ -114,12 +114,12 @@ public:
     /**
      * Serializza il dato passato nel buffer e rende accessibile le
      * componenti
-     * @param outbuffer Destinazione della bufferizzazione
-     * @param data Porco dio, arrivaci
-     * @param nbytes
-     * @param op
-     * @param valret
-     * */ // leggi i commenti e sistemali, dio cane; molto pratici 5 parametri
+     * @param dest Output buffer
+     * @param data Input buffer
+     * @param nbytes Lunghezza input buffer
+     * @param op Operazione compiuta
+     * @param valret Risultato dell'operazione (successo/insuccesso)
+     * */
     datareplied(void *dest, void *data, size_t nbytes, opt_t op, bool valret) {
         this->_header._nbytes = nbytes;
         this->_header._op = op;
