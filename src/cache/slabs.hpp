@@ -30,7 +30,7 @@ typedef struct {
     size_t requested; // The number of requested bytes
 } slabclass_t;
 
-class Slabs {
+class SlabAllocator {
 private:
     slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];
     size_t mem_limit;
@@ -54,7 +54,7 @@ private:
     #endif
 
 public:
-    Slabs(const struct config init_settings);
+    SlabAllocator(const struct config init_settings);
 
     inline unsigned int slabs_clsid(const size_t size) {
         unsigned res = POWER_SMALLEST;

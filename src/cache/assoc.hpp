@@ -11,11 +11,11 @@
 #define hashmask(n) (hashsize(n)-1)
 
 /** previous declarations **/
-class LRU_Queues;
+class LRU_Lists;
 
-class Assoc {
+class AssociativeArray {
 private:
-    LRU_Queues *lru;
+    LRU_Lists *lru;
 
     unsigned int hashpower; // how many powers of 2's worth of buckets we use
     unsigned int hash_items; // Number of items in the hash table.
@@ -38,11 +38,16 @@ private:
     hash_item** hashitem_before(const uint32_t hash, const char *key, const size_t nkey);
 
     inline bool which_hashtable(const uint32_t hash, unsigned int &bucket) {
-        return (this->expanding && (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket);
+        return (this->expanding &&
+                 (bucket = hash & hashmask(this->hashpower-1)) >= this->expand_bucket);
+    }
+
+    inline int get_bucket(const uint32_t hash) {
+        return hashmask(this->hashpower) & hash;
     }
 
 public:
-    Assoc(LRU_Queues *lru, unsigned int hashpower);
+    AssociativeArray(LRU_Lists *lru, unsigned int hashpower);
 
     hash_item *assoc_find(const uint32_t hash, const char *key, const size_t nkey);
     int assoc_insert(const uint32_t hash, hash_item *it);

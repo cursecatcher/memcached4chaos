@@ -7,13 +7,13 @@
 #include "const_types.h"
 
 /** previous declarations **/
-class LRU_Queues;
+class LRU_Lists;
 
 
 class DataCache {
 private:
     struct config config;
-    LRU_Queues *lru;
+    LRU_Lists *lru;
 
 public:
     DataCache(size_t MB_to_allocate = 64) {
@@ -25,7 +25,7 @@ public:
         this->config.hashpower = 16;
         this->config.item_size_max = 1024 * 1024; // 1 MB
 
-        this->lru = new LRU_Queues(this->config);
+        this->lru = new LRU_Lists(this->config);
     }
 
     inline bool get_item(const char *key, int32_t &bufflen, void **outbuffer) {

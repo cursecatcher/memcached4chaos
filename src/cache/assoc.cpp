@@ -5,7 +5,7 @@
 void* fun_assoc_maintenance_thread(void* arg);
 
 
-Assoc::Assoc(LRU_Queues *lru, unsigned int hashpower) {
+AssociativeArray::AssociativeArray(LRU_Lists *lru, unsigned int hashpower) {
     this->lru = lru;
     this->hashpower = hashpower;
     this->primary_hashtable = (hash_item**) calloc(hashsize(this->hashpower), sizeof(void *));
@@ -16,22 +16,22 @@ Assoc::Assoc(LRU_Queues *lru, unsigned int hashpower) {
     }
 }
 
-hash_item *Assoc::assoc_find(const uint32_t hash, const char *key, const size_t nkey) {
+hash_item *AssociativeArray::assoc_find(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item *it;
     unsigned int bucket;
 
     it = this->which_hashtable(hash, bucket) ?
          this->old_hashtable[bucket] :
-         this->primary_hashtable[hash & hashmask(this->hashpower)];
+         this->primary_hashtable[this->get_bucket(hash)];
 
-    for (; it; it = it->h_next) // gestione delle collisioni
+    for (; it; it = it->h_next) // ricerca nell'hash chain
         if ((nkey == it->nkey) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
             break;
 
     return it;
 }
 
-int Assoc::assoc_insert(const uint32_t hash, hash_item *it) {
+int AssociativeArray::assoc_insert(const uint32_t hash, hash_item *it) {
     unsigned int bucket;
 
     // shouldn't have duplicately named things defined
@@ -42,7 +42,8 @@ int Assoc::assoc_insert(const uint32_t hash, hash_item *it) {
         this->old_hashtable[bucket] = it;
     }
     else {
-        it->h_next = this->primary_hashtable[bucket = hash & hashmask(this->hashpower)];
+        bucket = this->get_bucket(hash);
+        it->h_next = this->primary_hashtable[bucket];
         this->primary_hashtable[bucket] = it;
     }
 
@@ -51,10 +52,9 @@ int Assoc::assoc_insert(const uint32_t hash, hash_item *it) {
         this->assoc_expand();
 
     return 1;
-
 }
 
-void Assoc::assoc_delete(const uint32_t hash, const char *key, const size_t nkey) {
+void AssociativeArray::assoc_delete(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item **before = this->hashitem_before(hash, key, nkey);
 
     if (*before) {
@@ -67,25 +67,25 @@ void Assoc::assoc_delete(const uint32_t hash, const char *key, const size_t nkey
         return;
     }
 
-    /* Note: we never actually get here. The callers don't delete things
-     * they can't find */
+    /* Note: we never actually get here.
+     * The callers don't delete things they can't find */
     assert(*before != NULL);
 }
 
-void Assoc::assoc_maintenance_thread() {
+void AssociativeArray::assoc_maintenance_thread() {
     bool done = false;
 
     do {
         this->lru->lock_cache();
 
-        for (int ii = 0; ii < DEFAULT_HASH_BULK_MOVE && this->expanding; ii++) {
+        if (this->expanding) {
             hash_item *it, *next;
             int bucket;
 
             for (it = this->old_hashtable[this->expand_bucket]; it; it = next) {
                 next = it->h_next;
 
-                bucket = hash(this->lru->item_get_key(it), it->nkey) & hashmask(this->hashpower);
+                bucket = this->get_bucket(hash(this->lru->item_get_key(it), it->nkey));
                 it->h_next = this->primary_hashtable[bucket];
                 this->primary_hashtable[bucket] = it;
             }
@@ -98,6 +98,7 @@ void Assoc::assoc_maintenance_thread() {
                 //hash table expansion done!
             }
         }
+
         if (!this->expanding)
             done = true;
 
@@ -107,12 +108,12 @@ void Assoc::assoc_maintenance_thread() {
 
 
 void* fun_assoc_maintenance_thread(void* arg) {
-    ((Assoc*) arg)->assoc_maintenance_thread();
+    ((AssociativeArray*) arg)->assoc_maintenance_thread();
     return NULL;
 }
 
 
-void Assoc::assoc_expand() {
+void AssociativeArray::assoc_expand() {
     this->old_hashtable = this->primary_hashtable;
     this->primary_hashtable = (hash_item**) calloc(hashsize(this->hashpower+1), sizeof(void *));
 
@@ -142,15 +143,16 @@ void Assoc::assoc_expand() {
     }
 }
 
-hash_item** Assoc::hashitem_before(const uint32_t hash, const char *key, const size_t nkey) {
+hash_item** AssociativeArray::hashitem_before(const uint32_t hash, const char *key, const size_t nkey) {
     hash_item **pos;
     unsigned int bucket;
 
     pos = this-> which_hashtable(hash, bucket) ?
           &this->old_hashtable[bucket] :
-          &this->primary_hashtable[hash & hashmask(this->hashpower)];
+          &this->primary_hashtable[this->get_bucket(hash)];
 
-    while (*pos && ((nkey != (*pos)->nkey) || memcmp(key, this->lru->item_get_key(*pos), nkey)))
+    while (*pos && ((nkey != (*pos)->nkey) ||
+            memcmp(key, this->lru->item_get_key(*pos), nkey)))
         pos = &(*pos)->h_next;
 
     return pos;

@@ -10,15 +10,15 @@
 #include "hash.h"
 
 /** previous declarations **/
-class Assoc;
-class Slabs;
+class AssociativeArray;
+class SlabAllocator;
 
 
-class LRU_Queues {
+class LRU_Lists {
 private:
     struct config settings;
-    Assoc *assoc;
-    Slabs *slabs;
+    AssociativeArray *assoc;
+    SlabAllocator *slabs;
 
     pthread_mutex_t cache_lock;
 
@@ -40,7 +40,7 @@ private:
     void do_store_item(hash_item *it);
 
 public:
-    LRU_Queues(const struct config settings);
+    LRU_Lists(const struct config settings);
 
     /** Allocate and initialize a new item structure
      * @param key the key for the new item

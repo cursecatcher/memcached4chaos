@@ -1,6 +1,6 @@
 #include "slabs.hpp"
 
-Slabs::Slabs(const struct config init_settings) {
+SlabAllocator::SlabAllocator(const struct config init_settings) {
     this->mem_limit = init_settings.maxbytes;
 
     if (init_settings.preallocate) {
@@ -51,7 +51,7 @@ Slabs::Slabs(const struct config init_settings) {
 #endif
 }
 
-void *Slabs::do_slabs_alloc(const size_t size, unsigned int id) {
+void *SlabAllocator::do_slabs_alloc(const size_t size, unsigned int id) {
     void *ret = NULL;
 
     if (id < POWER_SMALLEST || id > this->power_largest)
@@ -90,7 +90,7 @@ void *Slabs::do_slabs_alloc(const size_t size, unsigned int id) {
     return ret;
 }
 
-void Slabs::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
+void SlabAllocator::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
     if (id < POWER_SMALLEST || id > this->power_largest)
         return;
 
@@ -115,7 +115,7 @@ void Slabs::do_slabs_free(void *ptr, const size_t size, unsigned int id) {
     p->requested -= size;
 }
 
-int Slabs::do_slabs_newslab(const unsigned int id) {
+int SlabAllocator::do_slabs_newslab(const unsigned int id) {
     slabclass_t *p = &this->slabclass[id];
     int len = p->size * p->perslab;
     void *ptr;
@@ -139,7 +139,7 @@ int Slabs::do_slabs_newslab(const unsigned int id) {
 
 }
 
-bool Slabs::grow_slab_list(const unsigned int id) {
+bool SlabAllocator::grow_slab_list(const unsigned int id) {
     slabclass_t *p = &this->slabclass[id];
 
     if (p->slabs == p->list_size) {
@@ -154,7 +154,7 @@ bool Slabs::grow_slab_list(const unsigned int id) {
     return true;
 }
 
-void *Slabs::memory_allocate(size_t size) {
+void *SlabAllocator::memory_allocate(size_t size) {
     void *ret;
 
     if (this->mem_base == NULL) {
@@ -177,7 +177,7 @@ void *Slabs::memory_allocate(size_t size) {
 }
 
 #ifndef DONT_PREALLOC_SLABS
-void Slabs::slabs_preallocate (const unsigned int maxslabs) {
+void SlabAllocator::slabs_preallocate (const unsigned int maxslabs) {
     unsigned int prealloc = 0;
 
     /* pre-allocate a 1MB slab in every size class so people don't get
