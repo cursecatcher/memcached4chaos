@@ -4,16 +4,16 @@
 #include <ctime>
 #include <pthread.h>
 #include <unistd.h>
-
+#include <fstream>
 
 #include "../cache/datacache.hpp"
 
 #define MIN_LATENCY 5 //ms
-#define DELTA_LATENCY 10
+#define DELTA_LATENCY 10 //ms
 
-using namespace std;
 
 struct stat {
+    int nwriters, nreaders;
     int32_t num_opt;
     int32_t store_ok;
     int32_t store_failed;
@@ -38,47 +38,50 @@ pthread_mutex_t stats_lock = PTHREAD_MUTEX_INITIALIZER;
 bool exit_flag = false;
 
 int main(int argc, char *argv[]) {
-    int nreaders, nwriters;
     pthread_t *tid_readers, *tid_writers;
     pthread_t tid;
 
     srand(time(NULL));
 
     assert(argc == 3);
-    assert(sscanf(argv[1], "%d", &nwriters) == 1);
-    assert(nwriters > 0);
-    assert(sscanf(argv[2], "%d", &nreaders) == 1);
-    assert(nreaders > 0);
+    assert(sscanf(argv[1], "%d", &tot_stats.nwriters) == 1);
+    assert(tot_stats.nwriters > 0);
+    assert(sscanf(argv[2], "%d", &tot_stats.nreaders) == 1);
+    assert(tot_stats.nreaders > 0);
 
     DataCache *cache = new DataCache();
-    tid_readers = new pthread_t[nreaders];
-    tid_writers = new pthread_t[nwriters];
+    tid_readers = new pthread_t[tot_stats.nreaders];
+    tid_writers = new pthread_t[tot_stats.nwriters];
 
-    for (int i = 0; i < nwriters; i++)
+    for (int i = 0; i < tot_stats.nwriters; i++)
         assert(pthread_create(&tid_writers[i], NULL, writer, (void*) cache) == 0);
 
-    for (int i = 0; i < nreaders; i++)
+    for (int i = 0; i < tot_stats.nreaders; i++)
         assert(pthread_create(&tid_readers[i], NULL, reader, (void*) cache) == 0);
 
     assert(pthread_create(&tid, NULL, control, NULL) == 0);
 
     pthread_join(tid, NULL);
-    for (int i = 0; i < nwriters; i++)
+    for (int i = 0; i < tot_stats.nwriters; i++)
         pthread_join(tid_writers[i], NULL);
 
-    for (int i = 0; i < nreaders; i++)
+    for (int i = 0; i < tot_stats.nreaders; i++)
         pthread_join(tid_readers[i], NULL);
 
-    pthread_mutex_lock(&stats_lock);
-    cout << "Stats:" << endl;
-    cout << "num writers: " << nwriters << endl;
-    cout << "num readers: " << nreaders << endl;
-    cout << "num opt: " << tot_stats.num_opt << endl;
-    cout << "num store ok: " << tot_stats.store_ok << endl;
-    cout << "num store failed: " << tot_stats.store_failed << endl;
-    cout << "num find ok: " << tot_stats.cache_success << endl;
-    cout << "num find failed: " << tot_stats.cache_miss << endl;
-    pthread_mutex_unlock(&stats_lock);
+    std::fstream file;
+    file.open("testlog.log", std::fstream::binary | std::fstream::app | std::fstream::out);
+    file.write((char *) &tot_stats, sizeof(tot_stats));
+    file.close();
+    //~ pthread_mutex_lock(&stats_lock);
+    //~ cout << "Stats:" << endl;
+    //~ cout << "num writers: " << tot_stats.nwriters << endl;
+    //~ cout << "num readers: " << tot_stats.nreaders << endl;
+    //~ cout << "num opt: " << tot_stats.num_opt << endl;
+    //~ cout << "num store ok: " << tot_stats.store_ok << endl;
+    //~ cout << "num store failed: " << tot_stats.store_failed << endl;
+    //~ cout << "num find ok: " << tot_stats.cache_success << endl;
+    //~ cout << "num find failed: " << tot_stats.cache_miss << endl;
+    //~ pthread_mutex_unlock(&stats_lock);
 
     return 0;
 }
