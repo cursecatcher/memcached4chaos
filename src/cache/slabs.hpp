@@ -83,12 +83,12 @@ public:
         this->do_slabs_free(ptr, size, id);
         pthread_mutex_unlock(&this->lock);
     }
-
+/*
     inline void slabs_adjust_mem_requested(unsigned int id, size_t old, size_t ntotal) {
-        pthread_mutex_lock(&this->lock);
         assert(id >= POWER_SMALLEST && id <= this->power_largest);
+        pthread_mutex_lock(&this->lock);
         this->slabclass[id].requested += ntotal - old;
         pthread_mutex_unlock(&this->lock);
-    }
+    } */
 };
 #endif

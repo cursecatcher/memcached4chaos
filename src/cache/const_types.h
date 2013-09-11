@@ -33,25 +33,27 @@
 typedef uint32_t rel_time_t;
 
 typedef struct _hash_item {
-    struct _hash_item *next; // pointer to next item in lru
-    struct _hash_item *prev; // pointer to previous item in lru
+    // pointers to next and prev items in lru
+    struct _hash_item *next;
+    struct _hash_item *prev;
     struct _hash_item *h_next; // hash chain next
     rel_time_t time;  // least recent access
 
+    uint32_t hv; // The hashvalue of the key
     uint32_t nbytes; // The total size of the data (in bytes)
     uint16_t nkey; // The total length of the key (in bytes)
-    uint32_t hv; // The hashvalue of the key
-    uint16_t iflag; // Flags associated with the item
+
     unsigned short refcount;
+    uint8_t iflag; // Flags associated with the item
     uint8_t slabs_clsid; // which slab class we're in
 } hash_item;
 
 struct config {
-    size_t maxbytes; // SLABS
-    bool preallocate; // SLABS
-    float factor; // SLABS
-    size_t chunk_size; // SLABS
-    unsigned int hashpower; // ASSOC
-    size_t item_size_max; // LRU - SLABS
+    size_t maxbytes;
+    bool preallocate;
+    float factor;
+    size_t chunk_size;
+    unsigned int hashpower;
+    size_t item_size_max;
 };
 #endif
