@@ -49,20 +49,20 @@ if __name__ == "__main__":
     #situazione 1:n
     print "\n- Test 1:n"
 
-    for nreader in xrange(10, data["maxr"] + 1, 10):
+    for nreader in xrange(20, data["maxr"] + 1, 20):
         execute(1, nreader, data["ntest"])
 
     #situazione n:1
     print "\n- Test n:1"
 
-    for nwriter in xrange(10, data["maxw"] + 1, 10):
+    for nwriter in xrange(20, data["maxw"] + 1, 20):
         execute(nwriter, 1, data["ntest"])
 
     #situazione n writer - n reader
     print "\n- Test n:n"
 
-    for nwriter in xrange(10, data["maxw"] + 1, 10):
-        for nreader in xrange(10, data["maxr"] + 1, 10):
+    for nwriter in xrange(20, data["maxw"] + 1, 20):
+        for nreader in xrange(20, data["maxr"] + 1, 20):
             execute(nwriter, nreader, data["ntest"])
 
     print "\nTest terminati"
