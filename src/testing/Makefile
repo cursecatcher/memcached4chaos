@@ -24,4 +24,4 @@ clean:
 	rm -f *.o *.gch
 
 cleanall:
-	make clean && rm -f $(NAME)
+	make clean && rm -f *.data *.log

@@ -11,6 +11,10 @@
 #define MIN_LATENCY 5 //ms
 #define DELTA_LATENCY 10 //ms
 
+#define MAX_LEN_KEY 10
+#define KSIZE_RANGE 1000
+#define VSIZE_RANGE 500
+
 
 struct stat {
     int nwriters, nreaders;
@@ -43,7 +47,7 @@ int main(int argc, char *argv[]) {
 
     srand(time(NULL));
 
-    assert(argc == 3);
+    assert(argc == 4);
     assert(sscanf(argv[1], "%d", &tot_stats.nwriters) == 1);
     assert(tot_stats.nwriters > 0);
     assert(sscanf(argv[2], "%d", &tot_stats.nreaders) == 1);
@@ -69,19 +73,21 @@ int main(int argc, char *argv[]) {
         pthread_join(tid_readers[i], NULL);
 
     std::fstream file;
-    file.open("testlog.log", std::fstream::binary | std::fstream::app | std::fstream::out);
+    file.open(argv[3], std::fstream::binary | std::fstream::out | std::fstream::app);
     file.write((char *) &tot_stats, sizeof(tot_stats));
     file.close();
-    //~ pthread_mutex_lock(&stats_lock);
-    //~ cout << "Stats:" << endl;
-    //~ cout << "num writers: " << tot_stats.nwriters << endl;
-    //~ cout << "num readers: " << tot_stats.nreaders << endl;
-    //~ cout << "num opt: " << tot_stats.num_opt << endl;
-    //~ cout << "num store ok: " << tot_stats.store_ok << endl;
-    //~ cout << "num store failed: " << tot_stats.store_failed << endl;
-    //~ cout << "num find ok: " << tot_stats.cache_success << endl;
-    //~ cout << "num find failed: " << tot_stats.cache_miss << endl;
-    //~ pthread_mutex_unlock(&stats_lock);
+    /*
+    pthread_mutex_lock(&stats_lock);
+    std::cout << "Stats:" << std::endl;
+    std::cout << "num writers: " << tot_stats.nwriters << std::endl;
+    std::cout << "num readers: " << tot_stats.nreaders << std::endl;
+    std::cout << "num opt: " << tot_stats.num_opt << std::endl;
+    std::cout << "num store ok: " << tot_stats.store_ok << std::endl;
+    std::cout << "num store failed: " << tot_stats.store_failed << std::endl;
+    std::cout << "num find ok: " << tot_stats.cache_success << std::endl;
+    std::cout << "num find failed: " << tot_stats.cache_miss << std::endl;
+    pthread_mutex_unlock(&stats_lock);
+    */
 
     return 0;
 }
@@ -100,19 +106,21 @@ void *writer(void *arg) {
     DataCache *cache = (DataCache *) arg;
     struct stat local_stats = {};
 
-    char key[10];
-    char value[50];
+    char key[MAX_LEN_KEY];
+    char value[VSIZE_RANGE];
     void *buffer = (void*) value;
-    int32_t bufflen = 23; //???
+    int32_t bufflen;
 
     while (!exit_flag) {
-        local_stats.num_opt++;
+        int n = rand() % KSIZE_RANGE;
+        sprintf(key, "%d", n);
+        bufflen = 1 + rand() % VSIZE_RANGE;
 
         if (cache->store_item(key, buffer, bufflen))
             local_stats.store_ok++;
         else
             local_stats.store_failed++;
-
+        local_stats.num_opt++;
         /* check ret */
         latency();
     }
@@ -125,18 +133,20 @@ void *reader(void *arg) {
     DataCache *cache = (DataCache *) arg;
     struct stat local_stats = {};
 
-    char key[10];
-    void *buffer = malloc(50);
+    char key[MAX_LEN_KEY];
+    void *buffer = malloc(VSIZE_RANGE);
     int32_t bytereaded;
 
     while (!exit_flag) {
-        local_stats.num_opt++;
+        int n = rand() % KSIZE_RANGE;
+        sprintf(key, "%d", n);
 
         if (cache->get_item(key, bytereaded, &buffer))
             local_stats.cache_success++;
         else
             local_stats.cache_miss++;
-        /* check ret */
+        local_stats.num_opt++;
+
         latency();
     }
 
