@@ -53,6 +53,7 @@ public:
         this->lock_cache();
         it = this->do_item_alloc(key, nkey, nbytes);
         this->unlock_cache();
+
         return it;
     }
 
@@ -67,6 +68,7 @@ public:
         this->lock_cache();
         it = this->do_item_get(key, nkey, hv);
         this->unlock_cache();
+
         return it;
     }
 
@@ -89,7 +91,7 @@ public:
     /** Store an item in the cache
      * @param item the item to store */
     inline void store_item(hash_item *it) {
-        it->hv = hash(this->item_get_key(it), it->nkey);
+        it->hv = hash(this->item_get_key(it), it->nkey); //hash esterno al lock!
 
         this->lock_cache();
         this->do_store_item(it);

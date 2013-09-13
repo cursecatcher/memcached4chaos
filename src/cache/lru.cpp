@@ -139,7 +139,7 @@ int LRU_Lists::do_item_link(hash_item *it) {
     it->iflag |= ITEM_LINKED;
     it->time = this->get_current_time();
 
-    this->assoc->assoc_insert(it->hv, it);
+    this->assoc->assoc_insert(it);
     this->item_link_q(it);
 
     return 1;
@@ -204,7 +204,7 @@ void LRU_Lists::item_free(hash_item *it) {
 void LRU_Lists::do_store_item(hash_item *it) {
     hash_item *old_it = this->do_item_get(this->item_get_key(it), it->nkey, it->hv);
 
-    if (old_it != NULL) {
+    if (old_it) {
         this->do_item_replace(old_it, it);
         this->do_item_release(old_it);
     }

@@ -1,7 +1,5 @@
 #include "assoc.hpp"
 
-#define DEFAULT_HASH_BULK_MOVE 1
-
 void* fun_assoc_maintenance_thread(void* arg);
 
 
@@ -25,24 +23,25 @@ hash_item *AssociativeArray::assoc_find(const uint32_t hash, const char *key, co
          this->primary_hashtable[this->get_bucket(hash)];
 
     for (; it; it = it->h_next) // ricerca nell'hash chain
-        if ((nkey == it->nkey) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
+//        if ((nkey == it->nkey) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
+        if ((hash == it->hv) && memcmp(key, this->lru->item_get_key(it), nkey) == 0)
             break;
 
     return it;
 }
 
-int AssociativeArray::assoc_insert(const uint32_t hash, hash_item *it) {
+int AssociativeArray::assoc_insert(hash_item *it) {
     unsigned int bucket;
 
     // shouldn't have duplicately named things defined
-    assert(assoc_find(hash, this->lru->item_get_key(it), it->nkey) == NULL);
+    assert(assoc_find(it->hv, this->lru->item_get_key(it), it->nkey) == NULL);
 
-    if (this->which_hashtable(hash, bucket)) {
+    if (this->which_hashtable(it->hv, bucket)) {
         it->h_next = this->old_hashtable[bucket];
         this->old_hashtable[bucket] = it;
     }
     else {
-        bucket = this->get_bucket(hash);
+        bucket = this->get_bucket(it->hv);
         it->h_next = this->primary_hashtable[bucket];
         this->primary_hashtable[bucket] = it;
     }
@@ -85,7 +84,8 @@ void AssociativeArray::assoc_maintenance_thread() {
             for (it = this->old_hashtable[this->expand_bucket]; it; it = next) {
                 next = it->h_next;
 
-                bucket = this->get_bucket(hash(this->lru->item_get_key(it), it->nkey));
+//                bucket = this->get_bucket(hash(this->lru->item_get_key(it), it->nkey));
+                bucket = this->get_bucket(it->hv);
                 it->h_next = this->primary_hashtable[bucket];
                 this->primary_hashtable[bucket] = it;
             }
@@ -151,7 +151,8 @@ hash_item** AssociativeArray::hashitem_before(const uint32_t hash, const char *k
           &this->old_hashtable[bucket] :
           &this->primary_hashtable[this->get_bucket(hash)];
 
-    while (*pos && ((nkey != (*pos)->nkey) ||
+    while //(*pos && ((nkey != (*pos)->nkey) ||
+            (*pos && ((hash != (*pos)->hv) ||
             memcmp(key, this->lru->item_get_key(*pos), nkey)))
         pos = &(*pos)->h_next;
 

@@ -50,7 +50,7 @@ public:
     AssociativeArray(LRU_Lists *lru, unsigned int hashpower);
 
     hash_item *assoc_find(const uint32_t hash, const char *key, const size_t nkey);
-    int assoc_insert(const uint32_t hash, hash_item *it);
+    int assoc_insert(hash_item *it);
     void assoc_delete(const uint32_t hash, const char *key, const size_t nkey);
     void assoc_maintenance_thread();
 };
