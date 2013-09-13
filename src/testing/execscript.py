@@ -62,13 +62,13 @@ if __name__ == "__main__":
             execute(nwriter, 1, data["ntest"], data["nthread"])
 
     #situazione n writer - n reader
-    print "\n- Test n:n"
-
-    for nwriter in xrange(0, data["maxw"] + 1, delta):
-        if nwriter > 1:
-            for nreader in xrange(0, data["maxr"] + 1, delta):
-                if nreader > 1:
-                    execute(nwriter, nreader, data["ntest"], data["nthread"])
+    #~ print "\n- Test n:n"
+#~
+    #~ for nwriter in xrange(0, data["maxw"] + 1, delta):
+        #~ if nwriter > 1:
+            #~ for nreader in xrange(0, data["maxr"] + 1, delta):
+                #~ if nreader > 1:
+                    #~ execute(nwriter, nreader, data["ntest"], data["nthread"])
 
     print "\nTest terminati\n"
 
