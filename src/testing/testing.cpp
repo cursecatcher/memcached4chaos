@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     file.open(argv[3], std::fstream::binary | std::fstream::out | std::fstream::app);
     file.write((char *) &tot_stats, sizeof(tot_stats));
     file.close();
-    /*
+/*
     pthread_mutex_lock(&stats_lock);
     std::cout << "Stats:" << std::endl;
     std::cout << "num writers: " << tot_stats.nwriters << std::endl;
@@ -86,8 +86,7 @@ int main(int argc, char *argv[]) {
     std::cout << "num store failed: " << tot_stats.store_failed << std::endl;
     std::cout << "num find ok: " << tot_stats.cache_success << std::endl;
     std::cout << "num find failed: " << tot_stats.cache_miss << std::endl;
-    pthread_mutex_unlock(&stats_lock);
-    */
+    pthread_mutex_unlock(&stats_lock); */
 
     return 0;
 }
