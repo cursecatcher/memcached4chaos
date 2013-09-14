@@ -11,6 +11,7 @@ CACHE_DIR = ../cache/
 all:
 	make --directory=$(CACHE_DIR)
 	make $(NAME)
+	$(CC) -o merge mergeresults.cpp
 
 
 $(NAME): testing.o ../cache/*.o
