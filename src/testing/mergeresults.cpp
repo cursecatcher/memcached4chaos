@@ -53,6 +53,8 @@ int main(int argc, char *argv[]) {
     struct stat istat;
     struct stat ostat;
 
+    fo << "nw\tnr\tnopt\n";
+
     while (fi[0].good()) {
         memset((void *) &ostat, 0, sizeof(struct stat));
         // legge blocco dai file di input
@@ -63,8 +65,7 @@ int main(int argc, char *argv[]) {
         // medie
         avg_stats(&ostat, nfi);
         // scrive sul file di output
-        fo << "\nnw nr nop\n";
-        fo << ostat.nwriters << " " << ostat.nreaders << " " << ostat.num_opt << "\n";
+        fo << ostat.nwriters << "\t" << ostat.nreaders << "\t" << ostat.num_opt << "\n";
 //        fo << "nstore = " << ostat.store_ok + ostat.store_failed << "\n";
 //        fo << "nfind = " << ostat.cache_miss + ostat.cache_success << "\n";
     }
