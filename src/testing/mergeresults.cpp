@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         // medie
         avg_stats(&ostat, nfi);
         // scrive sul file di output
-        fo << ostat.nwriters << "\t" << ostat.nreaders << "\t" << ostat.num_opt << "\n";
+        fo << ostat.nwriters << " " << ostat.nreaders << " " << ostat.num_opt << "\n";
 //        fo << "nstore = " << ostat.store_ok + ostat.store_failed << "\n";
 //        fo << "nfind = " << ostat.cache_miss + ostat.cache_success << "\n";
     }
