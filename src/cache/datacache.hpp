@@ -66,19 +66,5 @@ public:
 
         return ret;
     }
-
-
-DataCache::DataCache(size_t cacheSize = 64);
-
-int DataCache::getItem(const char *key,
-                       int32_t &bufflen,
-                       void **outbuffer);
-
-int DataCache::storeItem(const char *key,
-                         const void *inbuffer,
-                         int32_t bufflen);
-
-int DataCache::deleteItem(const char *key);
-
 };
 #endif

@@ -115,7 +115,7 @@ void *writer(void *arg) {
         sprintf(key, "%d", n);
         bufflen = 1 + rand() % VSIZE_RANGE;
 
-        if (cache->store_item(key, buffer, bufflen))
+        if (cache->storeItem(key, buffer, bufflen) == 0)
             local_stats.store_ok++;
         else
             local_stats.store_failed++;
@@ -140,7 +140,7 @@ void *reader(void *arg) {
         int n = rand() % KSIZE_RANGE;
         sprintf(key, "%d", n);
 
-        if (cache->get_item(key, bytereaded, &buffer))
+        if (cache->getItem(key, bytereaded, &buffer) == 0)
             local_stats.cache_success++;
         else
             local_stats.cache_miss++;

@@ -110,9 +110,9 @@ int main(int argc, char *argv[]) {
 
 void reader_routine(void *arg) {
     client_buffer *buffer = (client_buffer *) arg;
-    bool op_ok;
+    int op_ok;
 
-    op_ok = buffer->cache->get_item(buffer->keybuffer, buffer->val_len, &buffer->valuebuffer);
+    op_ok = buffer->cache->getItem(buffer->keybuffer, buffer->val_len, &buffer->valuebuffer);
     (void) op_ok;
 
     pthread_cond_signal(&buffer->cond);
@@ -127,9 +127,9 @@ void reader_routine(void *arg) {
 
 void writer_routine(void *arg) {
     client_buffer *buffer = (client_buffer *) arg;
-    bool op_ok;
+    int op_ok;
 
-    op_ok = buffer->cache->store_item(buffer->keybuffer, buffer->valuebuffer, buffer->val_len);
+    op_ok = buffer->cache->storeItem(buffer->keybuffer, buffer->valuebuffer, buffer->val_len);
     (void) op_ok;
 
     pthread_cond_signal(&buffer->cond);

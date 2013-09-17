@@ -69,7 +69,7 @@ void zmqServer::worker(int nsocket) {
     int32_t byte_used = 0;
     datarequested *req = NULL;
     datareplied *rep = NULL;
-    bool success_op = false;
+    int success_op = false;
     bool closeall = false;
 
     while (!closeall) {
@@ -79,16 +79,16 @@ void zmqServer::worker(int nsocket) {
 
         switch (req->op_code()) {
             case CODE_OP_GET_VALUE_BY_KEY:
-                success_op = this->cache->get_item(req->key(), byte_used, &pcachebuffer);
-                rep = new datareplied(preplybuffer, pcachebuffer, (size_t) byte_used, CODE_OP_GET_VALUE_BY_KEY, success_op);
+                success_op = this->cache->getItem(req->key(), byte_used, &pcachebuffer);
+                rep = new datareplied(preplybuffer, pcachebuffer, (size_t) byte_used, CODE_OP_GET_VALUE_BY_KEY, (success == 0));
                 break;
             case CODE_OP_SET_KEY_VALUE:
-                success_op = this->cache->store_item(req->key(), req->data(), req->datasize());
-                rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_SET_KEY_VALUE, success_op);
+                success_op = this->cache->storeItem(req->key(), req->data(), req->datasize());
+                rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_SET_KEY_VALUE, (success == 0));
                 break;
             case CODE_OP_DELETE_BY_KEY:
-                success_op = this->cache->delete_item(req->key());
-                rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_DELETE_BY_KEY, success_op);
+                success_op = this->cache->deleteItem(req->key());
+                rep = new datareplied(preplybuffer, (void*) NULL, 0, CODE_OP_DELETE_BY_KEY, (success == 0));
                 break;
             case CODE_OP_SHUT_DOWN:
                 closeall = true;
