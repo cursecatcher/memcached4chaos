@@ -16,9 +16,9 @@ private:
     LRU_Lists *lru;
 
 public:
-    DataCache(size_t MB_to_allocate = 64) {
+    DataCache(size_t cacheSize = 64) {
         //init config
-        this->config.maxbytes = MB_to_allocate * 1024 * 1024;
+        this->config.maxbytes = cacheSize * 1024 * 1024;
         this->config.preallocate = false;
         this->config.factor = 1.25;
         this->config.chunk_size = 48;
@@ -28,40 +28,57 @@ public:
         this->lru = new LRU_Lists(this->config);
     }
 
-    inline bool get_item(const char *key, int32_t &bufflen, void **outbuffer) {
+    inline int getItem(const char *key, int32_t &bufflen, void **outbuffer) {
         hash_item *it = this->lru->item_get(key, strlen(key));
-        bool ret;
+        int ret = -1; //
 
-        if ((ret = (it != NULL))) {
+        if (it) {
             bufflen = it->nbytes;
             memcpy(*outbuffer, this->lru->item_get_data(it), it->nbytes);
+            ret = 0;
         }
 
         return ret;
     }
 
-    inline bool store_item(const char *key, const void *inbuffer, int32_t bufflen) {
+    inline int storeItem(const char *key, const void *inbuffer, int32_t bufflen) {
         hash_item *it = this->lru->item_alloc(key, strlen(key), bufflen);
-        bool ret;
+        int ret = -1;
 
         if ((ret = (it != NULL))) {
             memcpy(this->lru->item_get_data(it), inbuffer, bufflen);
             this->lru->store_item(it);
+            ret = 0;
         }
 
         return ret;
     }
 
-    inline bool delete_item(const char *key) {
+    inline int deleteItem(const char *key) {
         hash_item *it = this->lru->item_get(key, strlen(key));
-        bool ret;
+        int ret = -1;
 
         if ((ret = (it != NULL))) {
             this->lru->item_unlink(it);
             this->lru->item_release(it);
+            ret = 0;
         }
 
         return ret;
     }
+
+
+DataCache(size_t cacheSize = 64);
+
+int getItem(const char *key,
+            int32_t &bufflen,
+            void **outbuffer);
+
+int storeItem(const char *key,
+              const void *inbuffer,
+              int32_t bufflen);
+
+int deleteItem(const char *key);
+
 };
 #endif
